@@ -219,12 +219,10 @@ export function clearTilesInBounds(
   minZoom: number,
   maxZoom: number,
 ): number {
-  const tiles = listTilesForBounds(
-    bounds,
-    minZoom,
-    maxZoom,
-    ["topo", "steepness"],
-  );
+  const tiles = listTilesForBounds(bounds, minZoom, maxZoom, [
+    "topo",
+    "steepness",
+  ]);
   let deleted = 0;
   for (const coord of tiles) {
     const file = tileFile(coord);

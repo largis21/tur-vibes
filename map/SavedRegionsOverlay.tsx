@@ -21,8 +21,7 @@ export function SavedRegionsOverlay({
           { latitude: maxLat, longitude: minLon },
         ];
         const highlighted =
-          !!selectionBounds &&
-          boundsIntersect(region.bounds, selectionBounds);
+          !!selectionBounds && boundsIntersect(region.bounds, selectionBounds);
         return (
           <Polyline
             key={region.id}
