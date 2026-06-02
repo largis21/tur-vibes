@@ -1,180 +1,175 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Directory, File, Paths } from "expo-file-system";
+import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Animated,
-  Dimensions,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import MapView, {
-  Polyline,
+  LocalTile,
   UrlTile,
   type LatLng,
   type Region,
 } from "react-native-maps";
+import { CoordsBox } from "./map/CoordsBox";
+import { Crosshair } from "./map/Crosshair";
+import {
+  MapContextProvider,
+  type MapContextValue,
+  type RegionChangeListener,
+} from "./map/MapContext";
+import { getOfflinePathTemplate } from "./map/offlineTiles";
+import { SavedRegionsOverlay } from "./map/SavedRegionsOverlay";
+import { loadLastRegion, saveLastRegion } from "./map/persistedRegion";
+import {
+  KARTVERKET_TILE_CACHE,
+  KARTVERKET_TOPO_TILES,
+  STEEPNESS_RUNOUT_TILES,
+  STEEPNESS_TILE_CACHE,
+  useKartverketTileCache,
+} from "./map/tileCache";
+import { useOffline } from "./tools/offline/context";
+import { Sidebar } from "./tools/Sidebar";
+import { getToolById, tools } from "./tools/registry";
 
-const KARTVERKET_TOPO_TILES =
-  "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png";
+const AnimatedUrlTile = Animated.createAnimatedComponent(UrlTile);
 
-const INITIAL_REGION = {
+function ToolProviders({ children }: { children: ReactNode }) {
+  return tools.reduceRight<ReactNode>((acc, tool) => {
+    if (!tool.Provider) return acc;
+    const Provider = tool.Provider;
+    return <Provider>{acc}</Provider>;
+  }, children);
+}
+
+const DEFAULT_REGION = {
   latitude: 60.3913,
   longitude: 5.3221,
   latitudeDelta: 0.2,
   longitudeDelta: 0.2,
 };
 
-const KARTVERKET_TILE_CACHE = new Directory(Paths.cache, "kartverket-tiles");
-const KARTVERKET_TILE_CACHE_RETENTION_SECONDS = 60 * 60 * 24 * 7;
-const KARTVERKET_TILE_CACHE_RETENTION_MS =
-  KARTVERKET_TILE_CACHE_RETENTION_SECONDS * 1000;
-const EARTH_RADIUS_METERS = 6371000;
-
-function pruneExpiredTileFiles(directory: Directory, cutoffTime: number) {
-  for (const entry of directory.list()) {
-    if (entry instanceof Directory) {
-      pruneExpiredTileFiles(entry, cutoffTime);
-      continue;
-    }
-
-    if (entry instanceof File && entry.modificationTime !== null) {
-      if (entry.modificationTime < cutoffTime) {
-        entry.delete();
-      }
-    }
-  }
-}
-
-function useKartverketTileCache() {
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      KARTVERKET_TILE_CACHE.create({ idempotent: true, intermediates: true });
-      pruneExpiredTileFiles(
-        KARTVERKET_TILE_CACHE,
-        Date.now() - KARTVERKET_TILE_CACHE_RETENTION_MS,
-      );
-    }, 0);
-
-    return () => clearTimeout(timeout);
-  }, []);
-}
-
-function toRadians(degrees: number) {
-  return (degrees * Math.PI) / 180;
-}
-
-function getDistanceMeters(start: LatLng, end: LatLng) {
-  const latitudeDelta = toRadians(end.latitude - start.latitude);
-  const longitudeDelta = toRadians(end.longitude - start.longitude);
-  const startLatitude = toRadians(start.latitude);
-  const endLatitude = toRadians(end.latitude);
-
-  const haversine =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(startLatitude) *
-      Math.cos(endLatitude) *
-      Math.sin(longitudeDelta / 2) ** 2;
-
-  return (
-    EARTH_RADIUS_METERS *
-    2 *
-    Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-  );
-}
-
-function getTotalDistanceMeters(points: LatLng[]) {
-  return points.reduce((totalDistance, point, index) => {
-    if (index === 0) return totalDistance;
-
-    return totalDistance + getDistanceMeters(points[index - 1], point);
-  }, 0);
-}
-
-function formatDistance(distanceMeters: number) {
-  if (distanceMeters < 1000) {
-    return `${Math.round(distanceMeters)} m`;
-  }
-
-  return `${(distanceMeters / 1000).toFixed(2)} km`;
-}
+const INITIAL_REGION = loadLastRegion() ?? DEFAULT_REGION;
 
 export default function App() {
   useKartverketTileCache();
+
   const mapRef = useRef<MapView>(null);
-  const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const sidebarAnim = useRef(new Animated.Value(0)).current;
-
-  function openSidebar() {
-    setIsToolsOpen(true);
-    Animated.spring(sidebarAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      bounciness: 0,
-      speed: 20,
-    }).start();
-  }
-
-  function closeSidebar() {
-    Animated.spring(sidebarAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      bounciness: 0,
-      speed: 20,
-    }).start(() => setIsToolsOpen(false));
-  }
-  const [isMeasuring, setIsMeasuring] = useState(false);
-  const [measurePoints, setMeasurePoints] = useState<LatLng[]>([]);
-  const [markerPositions, setMarkerPositions] = useState<
-    { x: number; y: number }[]
-  >([]);
   const cursorCoordinate = useRef<LatLng>({
     latitude: INITIAL_REGION.latitude,
     longitude: INITIAL_REGION.longitude,
   });
-  const measuredDistance = useMemo(
-    () => getTotalDistanceMeters(measurePoints),
-    [measurePoints],
+  const regionListeners = useRef(new Set<RegionChangeListener>());
+
+  const subscribeRegionChange = useCallback(
+    (listener: RegionChangeListener) => {
+      regionListeners.current.add(listener);
+      return () => {
+        regionListeners.current.delete(listener);
+      };
+    },
+    [],
   );
 
-  async function updateMarkerPositions(points: LatLng[]) {
-    if (!mapRef.current || points.length === 0) {
-      setMarkerPositions([]);
-      return;
-    }
-    const positions = await Promise.all(
-      points.map((p) => mapRef.current!.pointForCoordinate(p)),
-    );
-    setMarkerPositions(positions);
-  }
+  const [activeToolId, setActiveToolId] = useState<string | null>(null);
+  const deactivateTool = useCallback(() => setActiveToolId(null), []);
 
-  function handleRegionChange(region: Region) {
+  const mapContextValue = useMemo<MapContextValue>(
+    () => ({
+      mapRef,
+      cursorCoordinate,
+      subscribeRegionChange,
+      deactivateTool,
+    }),
+    [subscribeRegionChange, deactivateTool],
+  );
+
+  const handleRegionChange = useCallback((region: Region) => {
     cursorCoordinate.current = {
       latitude: region.latitude,
       longitude: region.longitude,
     };
-    updateMarkerPositions(measurePoints);
+    regionListeners.current.forEach((listener) => listener(region));
+  }, []);
+
+  const handleRegionChangeComplete = useCallback(
+    (region: Region) => {
+      handleRegionChange(region);
+      saveLastRegion(region);
+    },
+    [handleRegionChange],
+  );
+
+  return (
+    <MapContextProvider value={mapContextValue}>
+      <ToolProviders>
+        <AppContent
+          activeToolId={activeToolId}
+          mapRef={mapRef}
+          onRegionChange={handleRegionChange}
+          onRegionChangeComplete={handleRegionChangeComplete}
+          setActiveToolId={setActiveToolId}
+        />
+      </ToolProviders>
+    </MapContextProvider>
+  );
+}
+
+type AppContentProps = {
+  activeToolId: string | null;
+  mapRef: React.RefObject<MapView | null>;
+  onRegionChange: (region: Region) => void;
+  onRegionChangeComplete: (region: Region) => void;
+  setActiveToolId: React.Dispatch<React.SetStateAction<string | null>>;
+};
+
+function AppContent({
+  activeToolId,
+  mapRef,
+  onRegionChange,
+  onRegionChangeComplete,
+  setActiveToolId,
+}: AppContentProps) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSteepness, setShowSteepness] = useState(false);
+  const { offlineMode, savedRegions, selectionBounds } = useOffline();
+  const activeTool = getToolById(activeToolId);
+
+  function handleSelectTool(id: string) {
+    setActiveToolId((current) => (current === id ? null : id));
+    setIsSidebarOpen(false);
   }
 
-  function handleAddPoint() {
-    const newPoint = cursorCoordinate.current;
-    // const { width, height } = Dimensions.get("window");
-    setMeasurePoints((currentPoints) => {
-      const next = [...currentPoints, newPoint];
-      // setMarkerPositions((prev) => [...prev, { x: width / 2, y: height / 2 }]);
-      updateMarkerPositions(next);
-      return next;
+  async function handleCenterOnUser() {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") return;
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
     });
+    mapRef.current?.animateCamera(
+      {
+        center: {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        },
+      },
+      { duration: 500 },
+    );
   }
 
-  function handleMeasurePress() {
-    setIsMeasuring((currentlyMeasuring) => !currentlyMeasuring);
-    closeSidebar();
-  }
+  const MapChildren = activeTool?.MapChildren;
+  const Overlay = activeTool?.Overlay;
 
   return (
     <>
@@ -183,376 +178,174 @@ export default function App() {
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={INITIAL_REGION}
-        mapType={Platform.OS === "android" ? "none" : "standard"}
-        onRegionChange={handleRegionChange}
-        onRegionChangeComplete={handleRegionChange}
-        rotateEnabled={false}
-        showsCompass={false}
+        mapType="satellite"
+        onRegionChange={onRegionChange}
+        onRegionChangeComplete={onRegionChangeComplete}
+        rotateEnabled
+        showsCompass
+        showsMyLocationButton={false}
         showsPointsOfInterest={false}
         showsScale={false}
+        showsUserLocation
         toolbarEnabled={false}
       >
-        <UrlTile
-          maximumNativeZ={18}
-          shouldReplaceMapContent
-          // A zero native max age updates file mtimes on cache hits; JS pruning enforces retention.
-          tileCacheMaxAge={0}
-          tileCachePath={KARTVERKET_TILE_CACHE.uri}
+        <LocalTile
+          pathTemplate={getOfflinePathTemplate("topo")}
           tileSize={256}
-          urlTemplate={KARTVERKET_TOPO_TILES}
+          zIndex={-1}
         />
-        {measurePoints.length > 1 ? (
-          <Polyline
-            coordinates={measurePoints}
-            geodesic
-            strokeColor="#f97316"
-            strokeWidth={4}
-            zIndex={10}
+        {!offlineMode ? (
+          <UrlTile
+            maximumNativeZ={18}
+            shouldReplaceMapContent
+            tileCacheMaxAge={0}
+            tileCachePath={KARTVERKET_TILE_CACHE.uri}
+            tileSize={256}
+            urlTemplate={KARTVERKET_TOPO_TILES}
           />
         ) : null}
+        {!offlineMode ? (
+          <AnimatedUrlTile
+            style={{ opacity: showSteepness ? 0.5 : 0 }}
+            maximumNativeZ={16}
+            tileCacheMaxAge={60 * 60 * 24 * 7}
+            tileCachePath={STEEPNESS_TILE_CACHE.uri}
+            tileSize={256}
+            urlTemplate={STEEPNESS_RUNOUT_TILES}
+            zIndex={1}
+          />
+        ) : null}
+        {showSteepness ? (
+          <LocalTile
+            pathTemplate={getOfflinePathTemplate("steepness")}
+            tileSize={256}
+            zIndex={2}
+          />
+        ) : null}
+        <SavedRegionsOverlay
+          regions={savedRegions}
+          selectionBounds={activeToolId === "offline" ? selectionBounds : null}
+        />
+        {MapChildren ? <MapChildren /> : null}
       </MapView>
-      {markerPositions.map((pos, index) => (
-        <View
-          key={index}
-          pointerEvents="none"
-          style={[styles.measureMarker, { left: pos.x - 12, top: pos.y - 12 }]}
-        >
-          <Text style={styles.measureMarkerText}>{index + 1}</Text>
-        </View>
-      ))}
-      {isMeasuring ? (
-        <>
-          <View style={styles.crosshair} pointerEvents="none">
-            <View style={styles.crosshairHLine} />
-            <View style={styles.crosshairVLine} />
-          </View>
-          <View style={styles.measureStatus}>
-            <View style={styles.measureStatusHeaderSection}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                disabled={measurePoints.length === 0}
-                onPress={() =>
-                  setMeasurePoints((p) => {
-                    const next = p.slice(0, -1);
-                    updateMarkerPositions(next);
-                    return next;
-                  })
-                }
-                style={[
-                  styles.measureActionButton,
-                  measurePoints.length === 0 &&
-                    styles.measureActionButtonDisabled,
-                ]}
-              >
-                <Ionicons color="#fff" name="backspace-outline" size={20} />
-              </TouchableOpacity>
-            </View>
-            <View style={{ ...styles.measureStatusHeaderSection, flex: 1 }}>
-              <Text style={styles.measureStatusTitle}>Measure</Text>
-
-              <Text style={styles.measureStatusText}>
-                {measurePoints.length === 0
-                  ? "Pan the map, then add a point"
-                  : `${measurePoints.length} point${
-                      measurePoints.length === 1 ? "" : "s"
-                    } - ${formatDistance(measuredDistance)}`}
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.measureStatusHeaderSection,
-                { alignItems: "flex-end" },
-              ]}
-            >
-              <TouchableOpacity
-                accessibilityRole="button"
-                onPress={() => {
-                  setIsMeasuring(false);
-                  setMeasurePoints([]);
-                  setMarkerPositions([]);
-                }}
-                style={styles.measureActionButton}
-              >
-                <Ionicons color="#fff" name="close" size={20} />
-              </TouchableOpacity>
-            </View>
-          </View>
+      <Crosshair visible={activeTool?.cursor ?? true} />
+      {!activeTool ? <CoordsBox /> : null}
+      {offlineMode && activeToolId !== "offline" ? <OfflineModeBanner /> : null}
+      {Overlay ? <Overlay /> : null}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        tools={tools}
+        activeToolId={activeToolId}
+        onSelectTool={handleSelectTool}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      {!activeTool ? (
+        <View style={styles.defaultButtons}>
           <TouchableOpacity
+            accessibilityLabel="Toggle steepness layer"
             accessibilityRole="button"
-            onPress={handleAddPoint}
-            style={styles.addPointButton}
-          >
-            <Text style={styles.addPointButtonText}>+ Add point</Text>
-          </TouchableOpacity>
-        </>
-      ) : null}
-      {isToolsOpen ? (
-        <>
-          <Animated.View
-            pointerEvents={isToolsOpen ? "auto" : "none"}
-            style={[styles.sidebarBackdrop, { opacity: sidebarAnim }]}
-          >
-            <Pressable
-              accessibilityLabel="Close tools"
-              style={StyleSheet.absoluteFill}
-              onPress={closeSidebar}
-            />
-          </Animated.View>
-          <Animated.View
+            onPress={() => setShowSteepness((value) => !value)}
             style={[
-              styles.sidebar,
-              {
-                transform: [
-                  {
-                    translateX: sidebarAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [280, 0],
-                    }),
-                  },
-                ],
-              },
+              styles.defaultButton,
+              showSteepness && styles.layerButtonActive,
             ]}
           >
-            <View style={styles.sidebarHeader}>
-              <Text style={styles.sidebarTitle}>Tools</Text>
-              <TouchableOpacity
-                accessibilityRole="button"
-                onPress={closeSidebar}
-                style={styles.closeButton}
-              >
-                <Ionicons color="#111827" name="close" size={22} />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              accessibilityRole="button"
-              onPress={handleMeasurePress}
-              style={[
-                styles.toolButton,
-                isMeasuring ? styles.toolButtonActive : null,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.toolButtonText,
-                  isMeasuring ? styles.toolButtonTextActive : null,
-                ]}
-              >
-                Measure distance
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              disabled={measurePoints.length === 0}
-              onPress={() => setMeasurePoints([])}
-              style={[
-                styles.secondaryToolButton,
-                measurePoints.length === 0 ? styles.disabledButton : null,
-              ]}
-            >
-              <Text style={styles.secondaryToolButtonText}>
-                Clear measurement
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </>
+            <Ionicons
+              color={showSteepness ? "#fff" : "#111827"}
+              name="trending-up"
+              size={24}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityLabel="Center on my location"
+            accessibilityRole="button"
+            onPress={handleCenterOnUser}
+            style={styles.defaultButton}
+          >
+            <Ionicons color="#111827" name="locate" size={26} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityLabel="Open tools"
+            accessibilityRole="button"
+            onPress={() => setIsSidebarOpen((open) => !open)}
+            style={styles.defaultButton}
+          >
+            <Ionicons color="#111827" name="menu" size={28} />
+          </TouchableOpacity>
+        </View>
       ) : null}
-      <TouchableOpacity
-        accessibilityLabel="Open tools"
-        accessibilityRole="button"
-        onPress={() => (isToolsOpen ? closeSidebar() : openSidebar())}
-        style={styles.menuButton}
-      >
-        <Ionicons color="#fff" name="menu" size={28} />
-      </TouchableOpacity>
     </>
   );
 }
 
+function OfflineModeBanner() {
+  const { setOfflineMode } = useOffline();
+  return (
+    <View style={styles.banner}>
+      <Ionicons color="#fff" name="cloud-offline" size={18} />
+      <Text style={styles.bannerText}>Offline mode</Text>
+      <TouchableOpacity
+        accessibilityRole="button"
+        onPress={() => setOfflineMode(false)}
+        style={styles.bannerButton}
+      >
+        <Text style={styles.bannerButtonText}>Disable</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  menuButton: {
-    alignItems: "center",
-    backgroundColor: "#111827",
-    borderRadius: 16,
-    bottom: 36,
-    elevation: 6,
-    height: 52,
-    justifyContent: "center",
+  defaultButtons: {
     position: "absolute",
     right: 20,
+    bottom: 40,
+    gap: 12,
+    flexDirection: "column",
+  },
+  defaultButton: {
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    height: 52,
+    justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     width: 52,
   },
-  sidebarBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15, 23, 42, 0.2)",
-  },
-  sidebar: {
-    backgroundColor: "#fff",
-    bottom: 0,
-    elevation: 7,
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    position: "absolute",
-    right: 0,
-    shadowColor: "#000",
-    shadowOffset: { height: 0, width: -3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    top: 0,
-    width: 280,
-  },
-  sidebarHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  sidebarTitle: {
-    color: "#111827",
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  closeButton: {
-    alignItems: "center",
-    height: 36,
-    justifyContent: "center",
-    width: 36,
-  },
-  toolButton: {
-    backgroundColor: "#f3f4f6",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  toolButtonActive: {
+  layerButtonActive: {
     backgroundColor: "#f97316",
   },
-  toolButtonText: {
-    color: "#111827",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  toolButtonTextActive: {
-    color: "#fff",
-  },
-  secondaryToolButton: {
-    borderColor: "#d1d5db",
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  disabledButton: {
-    opacity: 0.4,
-  },
-  secondaryToolButtonText: {
-    color: "#374151",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  measureStatus: {
-    gap: 12,
-    backgroundColor: "rgba(17, 24, 39, 0.9)",
-    borderRadius: 16,
+  banner: {
+    alignItems: "center",
+    backgroundColor: "rgba(249, 115, 22, 0.95)",
+    flexDirection: "row",
+    gap: 8,
     left: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     position: "absolute",
     right: 16,
-    top: 58,
-    display: "flex",
-    flexDirection: "row",
-  },
-  measureStatusHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  measureStatusHeaderSection: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  measureStatusActions: {},
-  measureActionButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 10,
-    width: 48,
-    height: 48,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
-  measureActionButtonDisabled: {    opacity: 0.35,
-  },
-  measureStatusTitle: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
-  measureStatusText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  measureMarker: {
-    alignItems: "center",
-    backgroundColor: "#f97316",
-    borderColor: "#fff",
+    top: 60,
     borderRadius: 12,
-    borderWidth: 2,
-    height: 24,
-    justifyContent: "center",
-    position: "absolute",
-    width: 24,
   },
-  measureMarkerText: {
+  bannerText: {
+    color: "#fff",
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  bannerButton: {
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  bannerButtonText: {
     color: "#fff",
     fontSize: 12,
-    fontWeight: "800",
-  },
-  crosshair: {
-    ...StyleSheet.absoluteFillObject,
-    marginTop: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  crosshairHLine: {
-    backgroundColor: "#111827",
-    height: 1.5,
-    position: "absolute",
-    width: 40,
-  },
-  crosshairVLine: {
-    backgroundColor: "#111827",
-    height: 40,
-    position: "absolute",
-    width: 1.5,
-  },
-  addPointButton: {
-    alignItems: "center",
-    alignSelf: "center",
-    backgroundColor: "#f97316",
-    borderRadius: 28,
-    bottom: 36,
-    elevation: 6,
-    paddingHorizontal: 28,
-    paddingVertical: 16,
-    position: "absolute",
-    shadowColor: "#000",
-    shadowOffset: { height: 3, width: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-  },
-  addPointButtonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "700",
   },
 });
