@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "../../lib/MapContext";
 import { Icon } from "../../components/Icon";
+import { ModalShell } from "../../components/ModalShell";
 import { RegionPreview } from "../../components/RegionPreview";
 import { useOffline } from "./context";
 import type { SavedOfflineRegion } from "../../lib/savedRegions";
@@ -140,27 +141,13 @@ function ListView({
   onCancelDownload: () => void;
 }) {
   return (
-    <div style={panelStyle}>
-      <div style={headerRow}>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: "#fff", fontSize: 16, fontWeight: 800 }}>
-            Offline maps
-          </div>
-          <div
-            style={{
-              color: "#9ca3af",
-              fontSize: 12,
-              marginTop: 2,
-            }}
-          >
-            Stored: {formatBytes(storageBytes)}
-          </div>
-        </div>
-        <button onClick={onClose} aria-label="Close" style={iconButton}>
-          <Icon name="close" size={20} color="#fff" />
-        </button>
-      </div>
-
+    <ModalShell
+      title="Offline maps"
+      subtitle={`Stored: ${formatBytes(storageBytes)}`}
+      onClose={onClose}
+      scrollable
+      zIndex={20}
+    >
       <div style={toggleRow}>
         <div style={{ flex: 1 }}>
           <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
@@ -188,7 +175,14 @@ function ListView({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="cloud-download" size={16} color="#f97316" />
-            <span style={{ color: "#f97316", fontSize: 13, fontWeight: 700, flex: 1 }}>
+            <span
+              style={{
+                color: "#f97316",
+                fontSize: 13,
+                fontWeight: 700,
+                flex: 1,
+              }}
+            >
               Downloading…{" "}
               {progress.total
                 ? `${Math.round(((progress.completed + progress.failed) / progress.total) * 100)}%`
@@ -238,7 +232,9 @@ function ListView({
                   progress.total
                     ? Math.min(
                         100,
-                        ((progress.completed + progress.failed) / progress.total) * 100,
+                        ((progress.completed + progress.failed) /
+                          progress.total) *
+                          100,
                       )
                     : 0
                 }%`,
@@ -272,7 +268,7 @@ function ListView({
         <Icon name="add" size={18} color="#fff" />
         <span>New area</span>
       </button>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -425,8 +421,7 @@ function CreateView({
   onCancelDownload: () => void;
 }) {
   const estimatedBytes = tileCount * 30 * 1024;
-  const canDownload =
-    polygon.length >= 3 && tileCount > 0 && !selfIntersecting;
+  const canDownload = polygon.length >= 3 && tileCount > 0 && !selfIntersecting;
   const status = selfIntersecting
     ? "Invalid shape – the area's edges cross. Move points so the outline doesn't overlap itself."
     : polygon.length === 0
@@ -455,11 +450,7 @@ function CreateView({
           zIndex: 20,
         }}
       >
-        <button
-          aria-label="Back"
-          onClick={onBack}
-          style={iconButton}
-        >
+        <button aria-label="Back" onClick={onBack} style={iconButton}>
           <Icon name="close" size={20} color="#fff" />
         </button>
         <div style={{ flex: 1, textAlign: "center" }}>
@@ -670,28 +661,6 @@ function ToggleSwitch({
   );
 }
 
-const panelStyle: React.CSSProperties = {
-  position: "absolute",
-  left: 16,
-  right: 16,
-  bottom: 36,
-  maxHeight: "70vh",
-  background: "rgba(17, 24, 39, 0.94)",
-  borderRadius: 16,
-  padding: 16,
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-  zIndex: 20,
-  overflowY: "auto",
-};
-
-const headerRow: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-};
-
 const toggleRow: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -732,7 +701,9 @@ export function OfflineDownloadBadge() {
   const { downloading, progress } = useOffline();
   if (!downloading || !progress) return null;
   const pct = progress.total
-    ? Math.round(((progress.completed + progress.failed) / progress.total) * 100)
+    ? Math.round(
+        ((progress.completed + progress.failed) / progress.total) * 100,
+      )
     : 0;
   return (
     <span

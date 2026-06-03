@@ -60,6 +60,13 @@ type NavigationContextValue = {
   setTracking: (v: boolean) => void;
   /** Current device heading in degrees (0 = north, CW). null until first reading. */
   deviceHeading: number | null;
+  /** Current geolocation fix while tracking is active. */
+  userPosition: LatLng | null;
+  /**
+   * Captures the current deviceHeading as a new bearing at userPosition
+   * (falls back to the map cursor) and deactivates tracking.
+   */
+  captureTrackingBearing: () => void;
 };
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -87,6 +94,26 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   );
   const [tracking, setTracking] = useState(false);
   const [deviceHeading, setDeviceHeading] = useState<number | null>(null);
+  const [userPosition, setUserPosition] = useState<LatLng | null>(null);
+
+  // Geolocation watch while tracking is active.
+  useEffect(() => {
+    if (!tracking) {
+      setUserPosition(null);
+      return;
+    }
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (p) =>
+        setUserPosition({
+          latitude: p.coords.latitude,
+          longitude: p.coords.longitude,
+        }),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 3000 },
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [tracking]);
 
   useEffect(() => {
     if (!tracking) {
@@ -157,6 +184,18 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setSelectedBearingId(null);
   }, []);
 
+  const captureTrackingBearing = useCallback(() => {
+    if (deviceHeading === null) return;
+    const origin = userPosition ?? { ...cursorCoordinate.current };
+    const id = makeId();
+    setBearings((current) => [
+      ...current,
+      { id, point: origin, heading: deviceHeading },
+    ]);
+    setSelectedBearingId(id);
+    setTracking(false);
+  }, [deviceHeading, userPosition, cursorCoordinate]);
+
   const value = useMemo<NavigationContextValue>(
     () => ({
       subToolId,
@@ -171,6 +210,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       tracking,
       setTracking,
       deviceHeading,
+      userPosition,
+      captureTrackingBearing,
     }),
     [
       subToolId,
@@ -182,6 +223,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       clearBearings,
       tracking,
       deviceHeading,
+      userPosition,
+      captureTrackingBearing,
     ],
   );
 

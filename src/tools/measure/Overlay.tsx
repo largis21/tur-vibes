@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { formatDistance, getTotalDistanceMeters } from "../../lib/geo";
 import { useMap } from "../../lib/MapContext";
 import { Icon } from "../../components/Icon";
+import { HeaderShell } from "../../components/HeaderShell";
 import { useMeasure } from "./context";
 
 export function MeasureOverlay() {
@@ -20,21 +21,7 @@ export function MeasureOverlay() {
 
   return (
     <>
-      <div
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          right: 16,
-          background: "rgba(17, 24, 39, 0.9)",
-          borderRadius: 16,
-          display: "flex",
-          gap: 12,
-          padding: "12px 16px",
-          alignItems: "center",
-          zIndex: 20,
-        }}
-      >
+      <HeaderShell onClose={handleClose} ariaLabel="Measure tool">
         <button
           aria-label="Remove last point"
           disabled={points.length === 0}
@@ -73,10 +60,7 @@ export function MeasureOverlay() {
                 } - ${formatDistance(distanceMeters)}`}
           </div>
         </div>
-        <button aria-label="Close" onClick={handleClose} style={actionButton}>
-          <Icon name="close" size={20} color="#fff" />
-        </button>
-      </div>
+      </HeaderShell>
       <button
         aria-label="Add point"
         onClick={addPoint}

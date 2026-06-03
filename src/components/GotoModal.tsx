@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { LatLng } from "../lib/types";
+import { ModalShell } from "./ModalShell";
 
 /**
  * Parse one or two coordinate inputs into a LatLng. Accepts either a single
@@ -50,41 +51,16 @@ export function GotoModal({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        zIndex: 100,
-      }}
+    <ModalShell
+      title="Go to coordinate"
+      onClose={onClose}
+      backdrop
+      zIndex={100}
     >
       <form
-        onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        style={{
-          background: "#fff",
-          color: "#111827",
-          borderRadius: 16,
-          padding: 20,
-          maxWidth: 360,
-          width: "100%",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-          Go to coordinate
-        </h2>
-
         <Field
           label="Latitude"
           inputRef={latRef}
@@ -102,7 +78,7 @@ export function GotoModal({
         />
 
         {error ? (
-          <div style={{ color: "#b91c1c", fontSize: 13 }}>{error}</div>
+          <div style={{ color: "#fca5a5", fontSize: 13 }}>{error}</div>
         ) : null}
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -112,8 +88,8 @@ export function GotoModal({
             style={{
               padding: "10px 14px",
               borderRadius: 10,
-              background: "#e5e7eb",
-              color: "#111827",
+              background: "rgba(255,255,255,0.12)",
+              color: "#d1d5db",
               fontSize: 14,
               fontWeight: 600,
             }}
@@ -135,7 +111,7 @@ export function GotoModal({
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -156,7 +132,7 @@ function Field({
 }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: "#9ca3af" }}>
         {label}
       </span>
       <input
@@ -169,7 +145,9 @@ function Field({
         style={{
           padding: "10px 12px",
           borderRadius: 10,
-          border: "1px solid #d1d5db",
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(255,255,255,0.08)",
+          color: "#f3f4f6",
           fontSize: 14,
           fontFamily: "monospace",
         }}

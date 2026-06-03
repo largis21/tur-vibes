@@ -93,3 +93,72 @@ export async function fetchPointInfo(
   }
   return { elevation, slopeDeg, aspectDeg };
 }
+
+const STEDSNAVN_PUNKT_URL = "https://ws.geonorge.no/stedsnavn/v1/punkt";
+
+type StedPunktResult = {
+  meterFraPunkt: number;
+  navneobjekttype: string;
+  stedsnavn: { skrivemåte: string; navnestatus: string }[];
+};
+
+type StedPunktResponse = {
+  navn: StedPunktResult[];
+};
+
+/**
+ * Finds the nearest named place to the given coordinate using Kartverket's
+ * Stedsnavn punkt API. Returns a formatted label or null if nothing is found.
+ */
+export async function fetchNearestPlaceName(
+  point: LatLng,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const params = new URLSearchParams({
+    nord: String(point.latitude),
+    ost: String(point.longitude),
+    koordsys: "4326",
+    utkoordsys: "4326",
+    radius: "2000",
+    treffPerSide: "5",
+    side: "1",
+  });
+  const res = await fetch(`${STEDSNAVN_PUNKT_URL}?${params}`, { signal });
+  if (!res.ok) return null;
+  const data: StedPunktResponse = await res.json();
+  const results = data.navn ?? [];
+  if (results.length === 0) return null;
+
+  // Prefer the closest result whose primary name is a natural feature.
+  const PREFERRED_TYPES = new Set([
+    "Fjell",
+    "Topp",
+    "Ås",
+    "Haug",
+    "Dal",
+    "Dalføre",
+    "Vidde",
+    "Bre",
+    "Elv",
+    "Innsjø",
+    "Vann",
+    "Tjern",
+    "Skar",
+    "Vik",
+    "Halvøy",
+    "Nes",
+  ]);
+  const sorted = [...results].sort((a, b) => a.meterFraPunkt - b.meterFraPunkt);
+  const preferred = sorted.find((r) => PREFERRED_TYPES.has(r.navneobjekttype));
+  const best = preferred ?? sorted[0];
+  if (!best) return null;
+
+  const name =
+    best.stedsnavn.find((n) => n.navnestatus === "hovednavn")?.skrivemåte ??
+    best.stedsnavn[0]?.skrivemåte;
+  if (!name) return null;
+
+  const dist = best.meterFraPunkt;
+  const distStr = dist < 1000 ? `${dist} m` : `${(dist / 1000).toFixed(1)} km`;
+  return `${name} (${best.navneobjekttype}, ${distStr})`;
+}

@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "../tools/defineTool";
 import { Icon } from "./Icon";
+import { LocationSearch } from "./LocationSearch";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export function Sidebar({
           background: "#fff",
           color: "#111827",
           boxShadow: "-3px 0 12px rgba(0,0,0,0.18)",
-          padding: "56px 20px 20px",
+          padding: "32px 20px 20px",
           transform: `translateX(${isOpen ? 0 : 280}px)`,
           transition: "transform 0.22s ease",
           zIndex: 51,
@@ -69,6 +70,7 @@ export function Sidebar({
             <Icon name="close" size={22} />
           </button>
         </div>
+        <LocationSearch onSelectResult={onClose} />
         {tools.map((tool) => {
           const isActive = tool.id === activeToolId;
           return (

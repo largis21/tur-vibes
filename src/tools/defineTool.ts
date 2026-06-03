@@ -15,7 +15,9 @@ export type IconName =
   | "cloud-download"
   | "shield"
   | "cog"
-  | "compass";
+  | "compass"
+  | "search"
+  | "location";
 
 /**
  * Pieces of the "default" UI a tool can opt-in to keep visible while it is

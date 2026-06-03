@@ -6,9 +6,6 @@ import { destinationPoint } from "../lib/geoBearing";
 import { useMap } from "../lib/MapContext";
 import { usePointInfo } from "../lib/PointInfoContext";
 
-/** Length of the steepest-descent arrow, in screen pixels. */
-const ARROW_LENGTH_PX = 24;
-
 export function PointInfoMapLayer() {
   const { point, info } = usePointInfo();
   const { mapRef } = useMap();
@@ -50,8 +47,8 @@ export function PointInfoMapLayer() {
     if (!point) return null;
     if (info?.aspectDeg == null || info.slopeDeg == null) return null;
     const mpp = metersPerPixel(point.latitude, zoom);
-    const length = ARROW_LENGTH_PX * mpp;
-    const headLen = 8 * mpp;
+    const length = 10 * mpp;
+    const headLen = 3 * mpp;
     const headAngle = 35; // degrees off the shaft
     const bearing = info.aspectDeg;
     const tip = destinationPoint(point, length, bearing);
@@ -98,7 +95,7 @@ export function PointInfoMapLayer() {
             paint={{
               "line-color": "#dc2626",
               "line-width": 2.5,
-              "line-opacity": 0.95,
+              "line-opacity": 1,
             }}
             layout={{ "line-cap": "round", "line-join": "round" }}
           />

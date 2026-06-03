@@ -1,6 +1,8 @@
 import { useMap } from "../../lib/MapContext";
 import { Icon } from "../../components/Icon";
+import { HeaderShell } from "../../components/HeaderShell";
 import { BearingCompass } from "./BearingCompass";
+import { BearingLabel } from "./BearingLabel";
 import { useNavigation, type SubToolId } from "./context";
 
 const SUB_TOOLS: { id: SubToolId; title: string }[] = [
@@ -22,6 +24,7 @@ export function NavigationOverlay() {
     tracking,
     setTracking,
     deviceHeading,
+    captureTrackingBearing,
   } = useNavigation();
 
   const selected = bearings.find((b) => b.id === selectedBearingId) ?? null;
@@ -45,22 +48,79 @@ export function NavigationOverlay() {
           ))
         : null}
 
+      {/* Direction labels for each committed bearing. */}
+      {subToolId === "bearing"
+        ? bearings.map((b) => <BearingLabel key={b.id} bearing={b} />)
+        : null}
+
+      {/* Tracking aim overlay — dims the map and guides the user to tap. */}
+      {tracking && (
+        <div
+          onClick={deviceHeading !== null ? captureTrackingBearing : undefined}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.52)",
+            zIndex: 18,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            cursor: deviceHeading !== null ? "crosshair" : "default",
+          }}
+        >
+          {deviceHeading !== null ? (
+            <>
+              <div
+                style={{
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  textAlign: "center",
+                  maxWidth: 280,
+                  lineHeight: 1.5,
+                  textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+                }}
+              >
+                Point the side of your phone at your target, then tap anywhere
+                to mark the bearing.
+              </div>
+              <div
+                style={{
+                  background: "rgba(249, 115, 22, 0.9)",
+                  color: "#fff",
+                  fontSize: 22,
+                  fontWeight: 800,
+                  padding: "8px 20px",
+                  borderRadius: 12,
+                  letterSpacing: 0.5,
+                  boxShadow: "0 3px 12px rgba(0,0,0,0.4)",
+                }}
+              >
+                {Math.round(deviceHeading)}°
+              </div>
+            </>
+          ) : (
+            <div
+              style={{
+                color: "#d1d5db",
+                fontSize: 14,
+                fontWeight: 600,
+                textAlign: "center",
+                maxWidth: 240,
+                lineHeight: 1.5,
+                textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+              }}
+            >
+              Waiting for compass signal…
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Top bar: sub-tool chips + close. */}
-      <div
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          right: 16,
-          background: "rgba(17, 24, 39, 0.9)",
-          borderRadius: 16,
-          padding: "10px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          zIndex: 20,
-        }}
-      >
+      <HeaderShell onClose={handleClose} ariaLabel="Navigation tool">
         <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
           {SUB_TOOLS.map((t) => {
             const active = subToolId === t.id;
@@ -119,22 +179,7 @@ export function NavigationOverlay() {
         >
           <Icon name="trash" size={18} color="#fff" />
         </button>
-        <button
-          aria-label="Close"
-          onClick={handleClose}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "rgba(255,255,255,0.15)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Icon name="close" size={20} color="#fff" />
-        </button>
-      </div>
+      </HeaderShell>
 
       {/* Bottom info row for the selected bearing. */}
       {subToolId === "bearing" && selected ? (

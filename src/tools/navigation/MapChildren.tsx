@@ -1,36 +1,15 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { destinationPoint } from "../../lib/geoBearing";
-import type { LatLng } from "../../lib/types";
 import { useNavigation } from "./context";
 
 /** Long enough to span the visible map at any reasonable zoom. */
 const PROJECTION_DISTANCE_METERS = 500_000;
 
 export function NavigationMapChildren() {
-  const { bearings, selectedBearingId, tracking, deviceHeading } =
+  const { bearings, selectedBearingId, tracking, deviceHeading, userPosition } =
     useNavigation();
-  const [userPosition, setUserPosition] = useState<LatLng | null>(null);
-
-  // Track geolocation while the compass-tracking mode is active.
-  useEffect(() => {
-    if (!tracking) {
-      setUserPosition(null);
-      return;
-    }
-    if (!navigator.geolocation) return;
-    const watchId = navigator.geolocation.watchPosition(
-      (p) =>
-        setUserPosition({
-          latitude: p.coords.latitude,
-          longitude: p.coords.longitude,
-        }),
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 3000 },
-    );
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [tracking]);
 
   const lines = useMemo<FeatureCollection<LineString>>(() => {
     const features: Feature<LineString>[] = bearings.map((b) => {

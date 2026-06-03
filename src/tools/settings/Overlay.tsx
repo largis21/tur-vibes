@@ -1,12 +1,40 @@
+import { useState } from "react";
 import { useMap } from "../../lib/MapContext";
 import { Icon } from "../../components/Icon";
 import { ToggleSwitch } from "../../components/ToggleSwitch";
 import { usePermissions } from "../../lib/permissions";
+import { deleteOfflineDatabase } from "../../lib/offlineTiles";
 
 export function SettingsOverlay() {
   const { deactivateTool } = useMap();
   const { location, orientation, setLocation, setOrientation } =
     usePermissions();
+  const [deleteState, setDeleteState] = useState<
+    "idle" | "confirm" | "deleting" | "done"
+  >("idle");
+
+  async function handleDeleteAll() {
+    if (deleteState === "idle") {
+      setDeleteState("confirm");
+      return;
+    }
+    if (deleteState === "confirm") {
+      setDeleteState("deleting");
+      try {
+        // Delete the entire IndexedDB database.
+        await deleteOfflineDatabase();
+        // Wipe all Cache Storage (service worker caches).
+        if (typeof caches !== "undefined") {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+        // Wipe all localStorage for this origin.
+        localStorage.clear();
+      } finally {
+        setDeleteState("done");
+      }
+    }
+  }
 
   return (
     <div
@@ -74,6 +102,50 @@ export function SettingsOverlay() {
           void setOrientation(v);
         }}
       />
+
+      <SectionHeader
+        icon="trash"
+        title="Data"
+        description="Permanently remove all app data from this device."
+      />
+
+      <button
+        onClick={() => void handleDeleteAll()}
+        disabled={deleteState === "deleting" || deleteState === "done"}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          padding: "12px 14px",
+          borderRadius: 12,
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#fff",
+          background:
+            deleteState === "confirm"
+              ? "#dc2626"
+              : deleteState === "done"
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(220, 38, 38, 0.2)",
+          border:
+            deleteState === "confirm"
+              ? "none"
+              : "1px solid rgba(220, 38, 38, 0.5)",
+          width: "100%",
+          transition: "background 0.15s",
+        }}
+      >
+        <Icon
+          name="trash"
+          size={16}
+          color={deleteState === "done" ? "#9ca3af" : "#fca5a5"}
+        />
+        {deleteState === "idle" && "Delete all data"}
+        {deleteState === "confirm" && "Tap again to confirm — this cannot be undone"}
+        {deleteState === "deleting" && "Deleting…"}
+        {deleteState === "done" && "All data deleted — reload the app"}
+      </button>
     </div>
   );
 }

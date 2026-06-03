@@ -472,6 +472,26 @@ export async function getOfflineTilesSize(): Promise<number> {
   return 0;
 }
 
+/** Delete the entire IndexedDB database and reset the cached connection. */
+export async function deleteOfflineDatabase(): Promise<void> {
+  // Close any open connection first so the deletion isn't blocked.
+  if (dbPromise) {
+    try {
+      const db = await dbPromise;
+      db.close();
+    } catch {
+      // ignore
+    }
+    dbPromise = null;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => resolve(); // proceed even if another tab blocks briefly
+  });
+}
+
 export async function clearTilesInPolygon(
   polygon: OfflineRegionPolygon,
   minZoom: number,
