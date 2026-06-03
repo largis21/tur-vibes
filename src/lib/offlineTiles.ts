@@ -1,5 +1,6 @@
 import maplibregl from "maplibre-gl";
 import { KARTVERKET_TOPO_TILES, STEEPNESS_RUNOUT_TILES } from "./tileCache";
+import type { LatLng } from "./types";
 
 export type OfflineLayerId = "topo" | "steepness";
 
@@ -65,15 +66,14 @@ async function putTile(
   z: number,
   x: number,
   y: number,
-  bytes: ArrayBuffer,
-) {
+  buf: ArrayBuffer,
+): Promise<void> {
   const db = await openDb();
-  return new Promise<void>((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(bytes, tileKey(layer, z, x, y));
+    tx.objectStore(STORE).put(buf, tileKey(layer, z, x, y));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
   });
 }
 
@@ -99,9 +99,9 @@ async function deleteTile(
   z: number,
   x: number,
   y: number,
-) {
+): Promise<void> {
   const db = await openDb();
-  return new Promise<void>((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
     tx.objectStore(STORE).delete(tileKey(layer, z, x, y));
     tx.oncomplete = () => resolve();
@@ -113,35 +113,33 @@ async function listKeysByPrefix(prefix: string): Promise<string[]> {
   const db = await openDb();
   return new Promise<string[]>((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
-    const req = tx
-      .objectStore(STORE)
-      .getAllKeys(IDBKeyRange.bound(prefix, `${prefix}\uffff`));
-    req.onsuccess = () => resolve((req.result as IDBValidKey[]).map(String));
+    const req = tx.objectStore(STORE).getAllKeys();
+    req.onsuccess = () =>
+      resolve(
+        (req.result as IDBValidKey[])
+          .map(String)
+          .filter((k) => k.startsWith(prefix)),
+      );
     req.onerror = () => reject(req.error);
   });
 }
 
 // ---------------------------------------------------------------------------
-// MapLibre custom protocol — serves tiles from IndexedDB.
+// MapLibre custom protocols
 // ---------------------------------------------------------------------------
 
-let protocolsRegistered = false;
-
 export function registerOfflineProtocols() {
-  if (protocolsRegistered) return;
-  protocolsRegistered = true;
   for (const cfg of Object.values(OFFLINE_LAYERS)) {
     maplibregl.addProtocol(cfg.protocol, async (params) => {
-      const m = params.url.match(/^[a-z-]+:\/\/(\d+)\/(\d+)\/(\d+)/);
-      if (!m) throw new Error(`bad tile url: ${params.url}`);
-      const z = Number(m[1]);
-      const x = Number(m[2]);
-      const y = Number(m[3]);
+      const url = new URL(params.url);
+      // protocol://z/x/y → host=z, pathname=/x/y
+      const z = Number(url.host);
+      const [, xStr, yStr] = url.pathname.split("/");
+      const x = Number(xStr);
+      const y = Number(yStr);
       const buf = await getTile(cfg.id, z, x, y);
       if (!buf) {
-        // Returning empty triggers a transparent placeholder; MapLibre will
-        // overzoom from the closest available zoom level for raster sources.
-        return { data: new Uint8Array() };
+        throw new Error("Tile not in offline cache");
       }
       return { data: buf };
     });
@@ -164,6 +162,15 @@ export function latToTileYFloat(lat: number, z: number) {
   );
 }
 
+function tileXToLon(x: number, z: number): number {
+  return (x / Math.pow(2, z)) * 360 - 180;
+}
+
+function tileYToLat(y: number, z: number): number {
+  const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+
 export type TileCoord = {
   layer: OfflineLayerId;
   z: number;
@@ -171,6 +178,7 @@ export type TileCoord = {
   y: number;
 };
 
+/** Axis-aligned lat/lon bounding box. Used for fast bbox-vs-bbox tests. */
 export type OfflineRegionBounds = {
   minLat: number;
   maxLat: number;
@@ -178,14 +186,177 @@ export type OfflineRegionBounds = {
   maxLon: number;
 };
 
-export function listTilesForBounds(
+/**
+ * A user-drawn selection polygon. Points are ordered; the last point connects
+ * implicitly to the first. Must contain at least 3 points to bound an area.
+ */
+export type OfflineRegionPolygon = LatLng[];
+
+// ---------------------------------------------------------------------------
+// Polygon math
+// ---------------------------------------------------------------------------
+
+export function polygonBBox(
+  polygon: OfflineRegionPolygon,
+): OfflineRegionBounds {
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  for (const p of polygon) {
+    if (p.latitude < minLat) minLat = p.latitude;
+    if (p.latitude > maxLat) maxLat = p.latitude;
+    if (p.longitude < minLon) minLon = p.longitude;
+    if (p.longitude > maxLon) maxLon = p.longitude;
+  }
+  return { minLat, maxLat, minLon, maxLon };
+}
+
+/** Standard ray-casting test. Polygon vertices use lon=x, lat=y. */
+export function pointInPolygon(
+  point: LatLng,
+  polygon: OfflineRegionPolygon,
+): boolean {
+  const x = point.longitude;
+  const y = point.latitude;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i]!.longitude;
+    const yi = polygon[i]!.latitude;
+    const xj = polygon[j]!.longitude;
+    const yj = polygon[j]!.latitude;
+    const denom = yj - yi || Number.EPSILON;
+    const intersect =
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / denom + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function ccw(a: LatLng, b: LatLng, c: LatLng): number {
+  return (
+    (b.longitude - a.longitude) * (c.latitude - a.latitude) -
+    (b.latitude - a.latitude) * (c.longitude - a.longitude)
+  );
+}
+
+function segmentsIntersect(
+  a: LatLng,
+  b: LatLng,
+  c: LatLng,
+  d: LatLng,
+): boolean {
+  const d1 = ccw(c, d, a);
+  const d2 = ccw(c, d, b);
+  const d3 = ccw(a, b, c);
+  const d4 = ccw(a, b, d);
+  if (
+    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Returns true if any pair of non-adjacent edges of the polygon (closed,
+ * implicit edge from last point back to first) cross each other.
+ */
+export function isPolygonSelfIntersecting(
+  polygon: OfflineRegionPolygon,
+): boolean {
+  const n = polygon.length;
+  if (n < 4) return false;
+  for (let i = 0; i < n; i += 1) {
+    const a1 = polygon[i]!;
+    const a2 = polygon[(i + 1) % n]!;
+    for (let j = i + 1; j < n; j += 1) {
+      // Skip adjacent edges (they share a vertex).
+      if ((j + 1) % n === i) continue;
+      if (j === (i + 1) % n) continue;
+      const b1 = polygon[j]!;
+      const b2 = polygon[(j + 1) % n]!;
+      if (segmentsIntersect(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
+export function boundsIntersect(
+  a: OfflineRegionBounds,
+  b: OfflineRegionBounds,
+): boolean {
+  return (
+    a.minLon < b.maxLon &&
+    a.maxLon > b.minLon &&
+    a.minLat < b.maxLat &&
+    a.maxLat > b.minLat
+  );
+}
+
+/** Does the polygon overlap the given lat/lon rectangle in any way? */
+function polygonOverlapsRect(
+  polygon: OfflineRegionPolygon,
+  rect: OfflineRegionBounds,
+): boolean {
+  // Quick bbox reject.
+  const bbox = polygonBBox(polygon);
+  if (!boundsIntersect(bbox, rect)) return false;
+  // 1. any polygon vertex inside the rect
+  for (const p of polygon) {
+    if (
+      p.longitude >= rect.minLon &&
+      p.longitude <= rect.maxLon &&
+      p.latitude >= rect.minLat &&
+      p.latitude <= rect.maxLat
+    ) {
+      return true;
+    }
+  }
+  // 2. any rect corner inside the polygon
+  const corners: LatLng[] = [
+    { latitude: rect.minLat, longitude: rect.minLon },
+    { latitude: rect.minLat, longitude: rect.maxLon },
+    { latitude: rect.maxLat, longitude: rect.maxLon },
+    { latitude: rect.maxLat, longitude: rect.minLon },
+  ];
+  for (const c of corners) {
+    if (pointInPolygon(c, polygon)) return true;
+  }
+  // 3. any polygon edge crosses any rect edge
+  const rectEdges: [LatLng, LatLng][] = [
+    [corners[0]!, corners[1]!],
+    [corners[1]!, corners[2]!],
+    [corners[2]!, corners[3]!],
+    [corners[3]!, corners[0]!],
+  ];
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    for (const [r1, r2] of rectEdges) {
+      if (segmentsIntersect(polygon[j]!, polygon[i]!, r1, r2)) return true;
+    }
+  }
+  return false;
+}
+
+/** Bbox-vs-polygon overlap, used to highlight saved regions touching a selection. */
+export function polygonOverlapsBounds(
+  polygon: OfflineRegionPolygon,
   bounds: OfflineRegionBounds,
+): boolean {
+  if (polygon.length < 3) return false;
+  return polygonOverlapsRect(polygon, bounds);
+}
+
+export function listTilesForPolygon(
+  polygon: OfflineRegionPolygon,
   minZoom: number,
   maxZoomByLayer: Partial<Record<OfflineLayerId, number>>,
   layers: OfflineLayerId[],
 ): TileCoord[] {
   const tiles: TileCoord[] = [];
-  const epsilon = 1e-9;
+  if (polygon.length < 3) return tiles;
+  const bbox = polygonBBox(polygon);
   for (const layer of layers) {
     const cfg = OFFLINE_LAYERS[layer];
     const layerMaxZoom = Math.min(
@@ -194,17 +365,25 @@ export function listTilesForBounds(
     );
     for (let z = minZoom; z <= layerMaxZoom; z += 1) {
       const max = Math.pow(2, z) - 1;
-      const xMinF = lonToTileXFloat(bounds.minLon + epsilon, z);
-      const xMaxF = lonToTileXFloat(bounds.maxLon - epsilon, z);
-      const yMinF = latToTileYFloat(bounds.maxLat - epsilon, z);
-      const yMaxF = latToTileYFloat(bounds.minLat + epsilon, z);
-      const xMin = Math.max(0, Math.floor(Math.min(xMinF, xMaxF)));
-      const xMax = Math.min(max, Math.floor(Math.max(xMinF, xMaxF)));
-      const yMin = Math.max(0, Math.floor(Math.min(yMinF, yMaxF)));
-      const yMax = Math.min(max, Math.floor(Math.max(yMinF, yMaxF)));
+      const xMinF = lonToTileXFloat(bbox.minLon, z);
+      const xMaxF = lonToTileXFloat(bbox.maxLon, z);
+      const yMinF = latToTileYFloat(bbox.maxLat, z);
+      const yMaxF = latToTileYFloat(bbox.minLat, z);
+      const xMin = Math.max(0, Math.floor(xMinF));
+      const xMax = Math.min(max, Math.floor(xMaxF));
+      const yMin = Math.max(0, Math.floor(yMinF));
+      const yMax = Math.min(max, Math.floor(yMaxF));
       for (let x = xMin; x <= xMax; x += 1) {
         for (let y = yMin; y <= yMax; y += 1) {
-          tiles.push({ layer, z, x, y });
+          const tileRect: OfflineRegionBounds = {
+            minLon: tileXToLon(x, z),
+            maxLon: tileXToLon(x + 1, z),
+            maxLat: tileYToLat(y, z),
+            minLat: tileYToLat(y + 1, z),
+          };
+          if (polygonOverlapsRect(polygon, tileRect)) {
+            tiles.push({ layer, z, x, y });
+          }
         }
       }
     }
@@ -234,43 +413,39 @@ export type DownloadHandle = {
   cancel: () => void;
 };
 
-const CONCURRENCY = 6;
-
 export function downloadOfflineTiles(
   tiles: TileCoord[],
   onProgress: (progress: DownloadProgress) => void,
 ): DownloadHandle {
   let cancelled = false;
+  const total = tiles.length;
   let completed = 0;
   let failed = 0;
-  let index = 0;
 
   const promise = (async () => {
+    const CONCURRENCY = 6;
+    let cursor = 0;
     async function worker() {
-      while (!cancelled) {
-        const i = index;
-        index += 1;
-        if (i >= tiles.length) return;
-        const coord = tiles[i];
+      while (!cancelled && cursor < tiles.length) {
+        const tile = tiles[cursor++]!;
         try {
-          const resp = await fetch(tileUrl(coord));
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const buf = await resp.arrayBuffer();
-          if (buf.byteLength === 0) throw new Error("empty");
-          await putTile(coord.layer, coord.z, coord.x, coord.y, buf);
+          const res = await fetch(tileUrl(tile), { cache: "no-store" });
+          if (!res.ok) throw new Error(`status ${res.status}`);
+          const buf = await res.arrayBuffer();
+          await putTile(tile.layer, tile.z, tile.x, tile.y, buf);
           completed += 1;
         } catch {
           failed += 1;
         }
-        if (!cancelled) {
-          onProgress({ total: tiles.length, completed, failed });
-        }
+        onProgress({ total, completed, failed });
       }
     }
-
-    const workers = Array.from({ length: CONCURRENCY }, () => worker());
+    const workers = Array.from(
+      { length: Math.min(CONCURRENCY, tiles.length) },
+      () => worker(),
+    );
     await Promise.all(workers);
-    return { total: tiles.length, completed, failed };
+    return { total, completed, failed };
   })();
 
   return {
@@ -297,35 +472,14 @@ export async function getOfflineTilesSize(): Promise<number> {
   return 0;
 }
 
-export async function clearOfflineTiles(): Promise<void> {
-  const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).clear();
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-export function boundsIntersect(
-  a: OfflineRegionBounds,
-  b: OfflineRegionBounds,
-): boolean {
-  return (
-    a.minLon < b.maxLon &&
-    a.maxLon > b.minLon &&
-    a.minLat < b.maxLat &&
-    a.maxLat > b.minLat
-  );
-}
-
-export async function clearTilesInBounds(
-  bounds: OfflineRegionBounds,
+export async function clearTilesInPolygon(
+  polygon: OfflineRegionPolygon,
   minZoom: number,
   maxZoomByLayer: Partial<Record<OfflineLayerId, number>>,
 ): Promise<number> {
+  if (polygon.length < 3) return 0;
+  const bbox = polygonBBox(polygon);
   let deleted = 0;
-  const epsilon = 1e-9;
   for (const layer of Object.keys(OFFLINE_LAYERS) as OfflineLayerId[]) {
     const cfg = OFFLINE_LAYERS[layer];
     const layerMaxZoom = Math.min(
@@ -335,37 +489,49 @@ export async function clearTilesInBounds(
     const allKeys = await listKeysByPrefix(`${layer}/`);
     for (let z = minZoom; z <= layerMaxZoom; z += 1) {
       const max = Math.pow(2, z) - 1;
-      const xMinF = lonToTileXFloat(bounds.minLon + epsilon, z);
-      const xMaxF = lonToTileXFloat(bounds.maxLon - epsilon, z);
-      const yMinF = latToTileYFloat(bounds.maxLat - epsilon, z);
-      const yMaxF = latToTileYFloat(bounds.minLat + epsilon, z);
-      const xMin = Math.max(0, Math.floor(Math.min(xMinF, xMaxF)));
-      const xMax = Math.min(max, Math.floor(Math.max(xMinF, xMaxF)));
-      const yMin = Math.max(0, Math.floor(Math.min(yMinF, yMaxF)));
-      const yMax = Math.min(max, Math.floor(Math.max(yMinF, yMaxF)));
+      const xMinF = lonToTileXFloat(bbox.minLon, z);
+      const xMaxF = lonToTileXFloat(bbox.maxLon, z);
+      const yMinF = latToTileYFloat(bbox.maxLat, z);
+      const yMaxF = latToTileYFloat(bbox.minLat, z);
+      const xMin = Math.max(0, Math.floor(xMinF));
+      const xMax = Math.min(max, Math.floor(xMaxF));
+      const yMin = Math.max(0, Math.floor(yMinF));
+      const yMax = Math.min(max, Math.floor(yMaxF));
       const prefix = `${layer}/${z}/`;
       for (const key of allKeys) {
         if (!key.startsWith(prefix)) continue;
         const parts = key.split("/");
         const x = Number(parts[2]);
         const y = Number(parts[3]);
-        if (x >= xMin && x <= xMax && y >= yMin && y <= yMax) {
-          await deleteTile(layer, z, x, y);
-          deleted += 1;
-        }
+        if (x < xMin || x > xMax || y < yMin || y > yMax) continue;
+        const tileRect: OfflineRegionBounds = {
+          minLon: tileXToLon(x, z),
+          maxLon: tileXToLon(x + 1, z),
+          maxLat: tileYToLat(y, z),
+          minLat: tileYToLat(y + 1, z),
+        };
+        if (!polygonOverlapsRect(polygon, tileRect)) continue;
+        await deleteTile(layer, z, x, y);
+        deleted += 1;
       }
     }
   }
   return deleted;
 }
 
-export async function getTilesSizeInBounds(
-  bounds: OfflineRegionBounds,
+export async function getTilesSizeInPolygon(
+  polygon: OfflineRegionPolygon,
   minZoom: number,
   maxZoomByLayer: Partial<Record<OfflineLayerId, number>>,
 ): Promise<number> {
-  const epsilon = 1e-9;
-  const ranges: Record<OfflineLayerId, Map<number, { xMin: number; xMax: number; yMin: number; yMax: number }>> = {
+  if (polygon.length < 3) return 0;
+  const bbox = polygonBBox(polygon);
+
+  /** Per-layer per-zoom xy bbox ranges. Tiles outside this bbox are skipped fast. */
+  const ranges: Record<
+    OfflineLayerId,
+    Map<number, { xMin: number; xMax: number; yMin: number; yMax: number }>
+  > = {
     topo: new Map(),
     steepness: new Map(),
   };
@@ -377,15 +543,15 @@ export async function getTilesSizeInBounds(
     );
     for (let z = minZoom; z <= layerMaxZoom; z += 1) {
       const max = Math.pow(2, z) - 1;
-      const xMinF = lonToTileXFloat(bounds.minLon + epsilon, z);
-      const xMaxF = lonToTileXFloat(bounds.maxLon - epsilon, z);
-      const yMinF = latToTileYFloat(bounds.maxLat - epsilon, z);
-      const yMaxF = latToTileYFloat(bounds.minLat + epsilon, z);
+      const xMinF = lonToTileXFloat(bbox.minLon, z);
+      const xMaxF = lonToTileXFloat(bbox.maxLon, z);
+      const yMinF = latToTileYFloat(bbox.maxLat, z);
+      const yMaxF = latToTileYFloat(bbox.minLat, z);
       ranges[layer].set(z, {
-        xMin: Math.max(0, Math.floor(Math.min(xMinF, xMaxF))),
-        xMax: Math.min(max, Math.floor(Math.max(xMinF, xMaxF))),
-        yMin: Math.max(0, Math.floor(Math.min(yMinF, yMaxF))),
-        yMax: Math.min(max, Math.floor(Math.max(yMinF, yMaxF))),
+        xMin: Math.max(0, Math.floor(xMinF)),
+        xMax: Math.min(max, Math.floor(xMaxF)),
+        yMin: Math.max(0, Math.floor(yMinF)),
+        yMax: Math.min(max, Math.floor(yMaxF)),
       });
     }
   }
@@ -418,8 +584,16 @@ export async function getTilesSizeInBounds(
           y >= range.yMin &&
           y <= range.yMax
         ) {
-          const value = cursor.value as ArrayBuffer | undefined;
-          if (value) total += value.byteLength;
+          const tileRect: OfflineRegionBounds = {
+            minLon: tileXToLon(x, z),
+            maxLon: tileXToLon(x + 1, z),
+            maxLat: tileYToLat(y, z),
+            minLat: tileYToLat(y + 1, z),
+          };
+          if (polygonOverlapsRect(polygon, tileRect)) {
+            const value = cursor.value as ArrayBuffer | undefined;
+            if (value) total += value.byteLength;
+          }
         }
       }
       cursor.continue();

@@ -17,6 +17,9 @@ export function PointInfoModal() {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Point info"
       style={{
         position: "fixed",
         left: 0,

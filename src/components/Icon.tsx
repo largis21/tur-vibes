@@ -38,13 +38,20 @@ export function Icon({
   size?: number;
   color?: string;
 }) {
+  const html = SVG[name];
+  if (!html) {
+    if (import.meta.env.DEV) {
+      console.warn(`Icon: unknown name "${name}"`);
+    }
+    return null;
+  }
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       style={{ display: "block", color, flexShrink: 0 }}
-      dangerouslySetInnerHTML={{ __html: SVG[name] }}
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { defineTool } from "../defineTool";
 import { OfflineProvider } from "./context";
+import { OfflineMapChildren } from "./MapChildren";
 import { OfflineOverlay } from "./Overlay";
 
 export const offlineTool = defineTool({
@@ -7,6 +8,6 @@ export const offlineTool = defineTool({
   title: "Offline maps",
   icon: "cloud-download",
   Provider: OfflineProvider,
+  MapChildren: OfflineMapChildren,
   Overlay: OfflineOverlay,
-  cursor: false,
 });

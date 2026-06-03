@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMap } from "../../lib/MapContext";
 import { Icon } from "../../components/Icon";
 import { RegionPreview } from "../../components/RegionPreview";
-import { DOWNLOAD_BOX_INSETS, useOffline } from "./context";
+import { useOffline } from "./context";
 import type { SavedOfflineRegion } from "../../lib/savedRegions";
 
 function formatBytes(bytes: number) {
@@ -13,9 +13,17 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+type Mode = "list" | "create";
+
 export function OfflineOverlay() {
   const { deactivateTool } = useMap();
+  const offline = useOffline();
   const {
+    polygon,
+    addPolygonPoint,
+    removeLastPolygonPoint,
+    clearPolygon,
+    selfIntersecting,
     tileCount,
     downloading,
     progress,
@@ -27,70 +35,418 @@ export function OfflineOverlay() {
     savedRegions,
     removeSavedRegion,
     regionSizes,
-  } = useOffline();
-  const [manageOpen, setManageOpen] = useState(false);
+  } = offline;
 
+  const [mode, setMode] = useState<Mode>("list");
+  const wasDownloading = useRef(false);
+
+  // After a download finishes, the context clears the polygon. Return to
+  // the list view so the user sees their new saved region.
+  useEffect(() => {
+    if (wasDownloading.current && !downloading) {
+      if (polygon.length === 0) setMode("list");
+    }
+    wasDownloading.current = downloading;
+  }, [downloading, polygon.length]);
+
+  function enterCreate() {
+    clearPolygon();
+    setMode("create");
+  }
+
+  function exitCreate() {
+    if (downloading) cancelDownload();
+    clearPolygon();
+    setMode("list");
+  }
+
+  function handleClose() {
+    if (mode === "create") {
+      if (downloading) cancelDownload();
+      clearPolygon();
+    }
+    deactivateTool();
+  }
+
+  if (mode === "create") {
+    return (
+      <CreateView
+        polygon={polygon}
+        tileCount={tileCount}
+        selfIntersecting={selfIntersecting}
+        downloading={downloading}
+        progress={progress}
+        onAdd={addPolygonPoint}
+        onUndo={removeLastPolygonPoint}
+        onClear={clearPolygon}
+        onBack={exitCreate}
+        onDownload={startDownload}
+        onCancelDownload={cancelDownload}
+      />
+    );
+  }
+
+  return (
+    <ListView
+      onClose={handleClose}
+      onNewRegion={enterCreate}
+      offlineMode={offlineMode}
+      setOfflineMode={setOfflineMode}
+      storageBytes={storageBytes}
+      savedRegions={savedRegions}
+      regionSizes={regionSizes}
+      onRemoveRegion={removeSavedRegion}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// List view
+// ---------------------------------------------------------------------------
+
+function ListView({
+  onClose,
+  onNewRegion,
+  offlineMode,
+  setOfflineMode,
+  storageBytes,
+  savedRegions,
+  regionSizes,
+  onRemoveRegion,
+}: {
+  onClose: () => void;
+  onNewRegion: () => void;
+  offlineMode: boolean;
+  setOfflineMode: (v: boolean) => void;
+  storageBytes: number;
+  savedRegions: SavedOfflineRegion[];
+  regionSizes: Record<string, number>;
+  onRemoveRegion: (id: string) => Promise<void>;
+}) {
+  return (
+    <div style={panelStyle}>
+      <div style={headerRow}>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: "#fff", fontSize: 16, fontWeight: 800 }}>
+            Offline maps
+          </div>
+          <div
+            style={{
+              color: "#9ca3af",
+              fontSize: 12,
+              marginTop: 2,
+            }}
+          >
+            Stored: {formatBytes(storageBytes)}
+          </div>
+        </div>
+        <button onClick={onClose} aria-label="Close" style={iconButton}>
+          <Icon name="close" size={20} color="#fff" />
+        </button>
+      </div>
+
+      <div style={toggleRow}>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
+            Offline mode
+          </div>
+          <div style={{ color: "#9ca3af", fontSize: 12, marginTop: 2 }}>
+            Use only downloaded maps. No network requests.
+          </div>
+        </div>
+        <ToggleSwitch checked={offlineMode} onChange={setOfflineMode} />
+      </div>
+
+      <div
+        style={{
+          color: "#d1d5db",
+          fontSize: 12,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: 0.4,
+          marginTop: 4,
+        }}
+      >
+        Saved areas
+      </div>
+
+      <SavedRegionsList
+        regions={savedRegions}
+        regionSizes={regionSizes}
+        onRemove={onRemoveRegion}
+      />
+
+      <button onClick={onNewRegion} style={primaryButton}>
+        <Icon name="add" size={18} color="#fff" />
+        <span>New area</span>
+      </button>
+    </div>
+  );
+}
+
+function SavedRegionsList({
+  regions,
+  regionSizes,
+  onRemove,
+}: {
+  regions: SavedOfflineRegion[];
+  regionSizes: Record<string, number>;
+  onRemove: (id: string) => Promise<void>;
+}) {
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  async function handleRemove(id: string) {
+    setRemovingId(id);
+    try {
+      await onRemove(id);
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  if (regions.length === 0) {
+    return (
+      <div
+        style={{
+          color: "#9ca3af",
+          fontSize: 13,
+          padding: "12px 4px",
+        }}
+      >
+        No saved areas yet. Tap "New area" to download one.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        gap: 12,
+        overflowX: "auto",
+        overflowY: "hidden",
+        paddingBottom: 4,
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {regions.map((region) => {
+        const isRemoving = removingId === region.id;
+        return (
+          <div
+            key={region.id}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: 10,
+              background: "rgba(255,255,255,0.06)",
+              borderRadius: 12,
+              flexShrink: 0,
+              width: 160,
+            }}
+          >
+            <RegionPreview polygon={region.polygon} width={140} height={140} />
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {new Date(region.createdAt).toLocaleDateString()}
+              </div>
+              <div
+                style={{
+                  color: "#9ca3af",
+                  fontSize: 11,
+                  marginTop: 2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {regionSizes[region.id] != null
+                  ? formatBytes(regionSizes[region.id]!)
+                  : "…"}
+              </div>
+            </div>
+            <button
+              disabled={isRemoving}
+              onClick={() => handleRemove(region.id)}
+              aria-label="Remove download"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                height: 36,
+                borderRadius: 10,
+                background: "#dc2626",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                opacity: isRemoving ? 0.4 : 1,
+              }}
+            >
+              <Icon name="trash" size={16} color="#fff" />
+              <span>Remove</span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Create view
+// ---------------------------------------------------------------------------
+
+function CreateView({
+  polygon,
+  tileCount,
+  selfIntersecting,
+  downloading,
+  progress,
+  onAdd,
+  onUndo,
+  onClear,
+  onBack,
+  onDownload,
+  onCancelDownload,
+}: {
+  polygon: { latitude: number; longitude: number }[];
+  tileCount: number;
+  selfIntersecting: boolean;
+  downloading: boolean;
+  progress: { total: number; completed: number; failed: number } | null;
+  onAdd: () => void;
+  onUndo: () => void;
+  onClear: () => void;
+  onBack: () => void;
+  onDownload: () => void;
+  onCancelDownload: () => void;
+}) {
   const estimatedBytes = tileCount * 30 * 1024;
+  const canDownload =
+    polygon.length >= 3 && tileCount > 0 && !selfIntersecting;
+  const status = selfIntersecting
+    ? "Invalid shape – the area's edges cross. Move points so the outline doesn't overlap itself."
+    : polygon.length === 0
+      ? "Pan and tap + to add a point. Drag points to adjust."
+      : polygon.length < 3
+        ? `${polygon.length} point${polygon.length === 1 ? "" : "s"} – add ${
+            3 - polygon.length
+          } more`
+        : `${polygon.length} points · ${tileCount.toLocaleString()} tiles · ~${formatBytes(estimatedBytes)}`;
 
   return (
     <>
+      {/* Top status bar */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          zIndex: 6,
+          top: 16,
+          left: 16,
+          right: 16,
+          background: "rgba(17, 24, 39, 0.94)",
+          borderRadius: 16,
+          padding: "10px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          zIndex: 20,
         }}
       >
-        <div
+        <button
+          aria-label="Back"
+          onClick={onBack}
+          disabled={downloading}
           style={{
-            ...dim,
-            top: 0,
-            left: 0,
-            right: 0,
-            height: `${DOWNLOAD_BOX_INSETS.top * 100}%`,
+            ...iconButton,
+            opacity: downloading ? 0.4 : 1,
           }}
-        />
-        <div
+        >
+          <Icon name="close" size={20} color="#fff" />
+        </button>
+        <div style={{ flex: 1, textAlign: "center" }}>
+          <div
+            style={{
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 800,
+              letterSpacing: 0.4,
+              textTransform: "uppercase",
+            }}
+          >
+            New offline area
+          </div>
+          <div
+            style={{
+              color: selfIntersecting ? "#fca5a5" : "#d1d5db",
+              fontSize: 12,
+              fontWeight: 600,
+              marginTop: 2,
+            }}
+          >
+            {status}
+          </div>
+        </div>
+        <button
+          aria-label="Remove last point"
+          disabled={polygon.length === 0 || downloading}
+          onClick={onUndo}
           style={{
-            ...dim,
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: `${DOWNLOAD_BOX_INSETS.bottom * 100}%`,
+            ...iconButton,
+            opacity: polygon.length === 0 || downloading ? 0.35 : 1,
           }}
-        />
-        <div
+        >
+          <Icon name="backspace" size={20} color="#fff" />
+        </button>
+        <button
+          aria-label="Clear"
+          disabled={polygon.length === 0 || downloading}
+          onClick={onClear}
           style={{
-            ...dim,
-            top: `${DOWNLOAD_BOX_INSETS.top * 100}%`,
-            bottom: `${DOWNLOAD_BOX_INSETS.bottom * 100}%`,
-            left: 0,
-            width: `${DOWNLOAD_BOX_INSETS.horizontal * 100}%`,
+            ...iconButton,
+            opacity: polygon.length === 0 || downloading ? 0.35 : 1,
           }}
-        />
-        <div
-          style={{
-            ...dim,
-            top: `${DOWNLOAD_BOX_INSETS.top * 100}%`,
-            bottom: `${DOWNLOAD_BOX_INSETS.bottom * 100}%`,
-            right: 0,
-            width: `${DOWNLOAD_BOX_INSETS.horizontal * 100}%`,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: `${DOWNLOAD_BOX_INSETS.top * 100}%`,
-            bottom: `${DOWNLOAD_BOX_INSETS.bottom * 100}%`,
-            left: `${DOWNLOAD_BOX_INSETS.horizontal * 100}%`,
-            right: `${DOWNLOAD_BOX_INSETS.horizontal * 100}%`,
-            border: "2px dashed #f97316",
-            borderRadius: 4,
-          }}
-        />
+        >
+          <Icon name="trash" size={18} color="#fff" />
+        </button>
       </div>
 
+      {/* Add-point FAB at the crosshair */}
+      {!downloading ? (
+        <button
+          aria-label="Add point"
+          onClick={onAdd}
+          style={{
+            position: "absolute",
+            right: 20,
+            bottom: 132,
+            width: 56,
+            height: 56,
+            borderRadius: 18,
+            background: "#f97316",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 3px 6px rgba(0,0,0,0.25)",
+            zIndex: 20,
+          }}
+        >
+          <Icon name="add" size={32} color="#fff" />
+        </button>
+      ) : null}
+
+      {/* Bottom action bar */}
       <div
         style={{
           position: "absolute",
@@ -99,81 +455,13 @@ export function OfflineOverlay() {
           bottom: 36,
           background: "rgba(17, 24, 39, 0.94)",
           borderRadius: 16,
-          padding: 16,
+          padding: 12,
           display: "flex",
           flexDirection: "column",
-          gap: 12,
+          gap: 10,
           zIndex: 20,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <div style={{ color: "#fff", fontSize: 16, fontWeight: 800 }}>
-              Offline maps
-            </div>
-            <div
-              style={{
-                color: "#9ca3af",
-                fontSize: 12,
-                marginTop: 2,
-              }}
-            >
-              Pan to position the area inside the dashed box.
-            </div>
-          </div>
-          <button
-            onClick={deactivateTool}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: "rgba(255,255,255,0.15)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Icon name="close" size={20} color="#fff" />
-          </button>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
-              Offline mode
-            </div>
-            <div style={{ color: "#9ca3af", fontSize: 12, marginTop: 2 }}>
-              Use only downloaded maps. No network requests.
-            </div>
-          </div>
-          <ToggleSwitch
-            checked={offlineMode}
-            onChange={(v) => setOfflineMode(v)}
-          />
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ color: "#d1d5db", fontSize: 12 }}>
-            {tileCount.toLocaleString()} tiles · ~{formatBytes(estimatedBytes)}
-          </span>
-          <span style={{ color: "#d1d5db", fontSize: 12 }}>
-            Stored: {formatBytes(storageBytes)}
-          </span>
-        </div>
-
         {progress && downloading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div
@@ -215,228 +503,36 @@ export function OfflineOverlay() {
           </div>
         ) : null}
 
-        <div style={{ display: "flex", gap: 8 }}>
-          {downloading ? (
-            <button
-              onClick={cancelDownload}
-              style={{ ...button, background: "#374151" }}
-            >
-              <Icon name="stop" size={18} color="#fff" />
-              <span>Stop</span>
-            </button>
-          ) : (
-            <>
-              <button
-                disabled={tileCount === 0}
-                onClick={startDownload}
-                style={{
-                  ...button,
-                  background: "#f97316",
-                  opacity: tileCount === 0 ? 0.4 : 1,
-                }}
-              >
-                <Icon name="download" size={18} color="#fff" />
-                <span>Download</span>
-              </button>
-              <button
-                onClick={() => setManageOpen(true)}
-                style={{ ...button, background: "#374151" }}
-              >
-                <Icon name="menu" size={18} color="#fff" />
-                <span>Manage ({savedRegions.length})</span>
-              </button>
-            </>
-          )}
-        </div>
+        {downloading ? (
+          <button
+            onClick={onCancelDownload}
+            style={{ ...primaryButton, background: "#374151" }}
+          >
+            <Icon name="stop" size={18} color="#fff" />
+            <span>Stop download</span>
+          </button>
+        ) : (
+          <button
+            disabled={!canDownload}
+            onClick={onDownload}
+            style={{
+              ...primaryButton,
+              background: "#f97316",
+              opacity: canDownload ? 1 : 0.4,
+            }}
+          >
+            <Icon name="download" size={18} color="#fff" />
+            <span>Download</span>
+          </button>
+        )}
       </div>
-
-      {manageOpen ? (
-        <ManageDownloadsPanel
-          regions={savedRegions}
-          regionSizes={regionSizes}
-          onClose={() => setManageOpen(false)}
-          onRemove={removeSavedRegion}
-        />
-      ) : null}
     </>
   );
 }
 
-function ManageDownloadsPanel({
-  regions,
-  regionSizes,
-  onClose,
-  onRemove,
-}: {
-  regions: SavedOfflineRegion[];
-  regionSizes: Record<string, number>;
-  onClose: () => void;
-  onRemove: (id: string) => Promise<void>;
-}) {
-  const [removingId, setRemovingId] = useState<string | null>(null);
-
-  async function handleRemove(id: string) {
-    setRemovingId(id);
-    try {
-      await onRemove(id);
-    } finally {
-      setRemovingId(null);
-    }
-  }
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center",
-        zIndex: 30,
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxHeight: "70%",
-          background: "#111827",
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          padding: 16,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <div
-            style={{ flex: 1, color: "#fff", fontSize: 16, fontWeight: 800 }}
-          >
-            Downloads
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: "rgba(255,255,255,0.15)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Icon name="close" size={20} color="#fff" />
-          </button>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            gap: 12,
-            overflowX: "auto",
-            overflowY: "hidden",
-            paddingBottom: 4,
-            WebkitOverflowScrolling: "touch",
-          }}
-        >
-          {regions.length === 0 ? (
-            <div
-              style={{ color: "#9ca3af", fontSize: 14, padding: "16px 4px" }}
-            >
-              No downloads yet.
-            </div>
-          ) : (
-            regions.map((region) => {
-              const isRemoving = removingId === region.id;
-              return (
-                <div
-                  key={region.id}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    padding: 10,
-                    background: "rgba(255,255,255,0.06)",
-                    borderRadius: 12,
-                    flexShrink: 0,
-                    width: 160,
-                  }}
-                >
-                  <RegionPreview
-                    bounds={region.bounds}
-                    width={140}
-                    height={140}
-                  />
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        color: "#fff",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {new Date(region.createdAt).toLocaleDateString()}
-                    </div>
-                    <div
-                      style={{
-                        color: "#9ca3af",
-                        fontSize: 11,
-                        marginTop: 2,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {regionSizes[region.id] != null
-                        ? formatBytes(regionSizes[region.id])
-                        : "…"}
-                    </div>
-                  </div>
-                  <button
-                    disabled={isRemoving}
-                    onClick={() => handleRemove(region.id)}
-                    aria-label="Remove download"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      height: 36,
-                      borderRadius: 10,
-                      background: "#dc2626",
-                      color: "#fff",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      opacity: isRemoving ? 0.4 : 1,
-                    }}
-                  >
-                    <Icon name="trash" size={16} color="#fff" />
-                    <span>Remove</span>
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// ---------------------------------------------------------------------------
+// Shared bits
+// ---------------------------------------------------------------------------
 
 function ToggleSwitch({
   checked,
@@ -476,13 +572,47 @@ function ToggleSwitch({
   );
 }
 
-const dim: React.CSSProperties = {
+const panelStyle: React.CSSProperties = {
   position: "absolute",
-  background: "rgba(0, 0, 0, 0.45)",
+  left: 16,
+  right: 16,
+  bottom: 36,
+  maxHeight: "70vh",
+  background: "rgba(17, 24, 39, 0.94)",
+  borderRadius: 16,
+  padding: 16,
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+  zIndex: 20,
+  overflowY: "auto",
 };
 
-const button: React.CSSProperties = {
-  flex: 1,
+const headerRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+};
+
+const toggleRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  justifyContent: "space-between",
+};
+
+const iconButton: React.CSSProperties = {
+  width: 40,
+  height: 40,
+  borderRadius: 10,
+  background: "rgba(255,255,255,0.15)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
+
+const primaryButton: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -492,4 +622,5 @@ const button: React.CSSProperties = {
   color: "#fff",
   fontSize: 14,
   fontWeight: 700,
+  background: "#f97316",
 };

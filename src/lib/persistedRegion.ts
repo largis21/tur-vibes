@@ -1,30 +1,23 @@
+import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from "./storage";
 import type { Region } from "./types";
 
-const KEY = "tur-vibes:last-region";
+function isRegion(value: unknown): value is Region {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.latitude === "number" &&
+    typeof v.longitude === "number" &&
+    typeof v.latitudeDelta === "number" &&
+    typeof v.longitudeDelta === "number"
+  );
+}
 
 export function loadLastRegion(): Region | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      typeof parsed?.latitude === "number" &&
-      typeof parsed?.longitude === "number" &&
-      typeof parsed?.latitudeDelta === "number" &&
-      typeof parsed?.longitudeDelta === "number"
-    ) {
-      return parsed as Region;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return safeGetJSON<Region | null>(STORAGE_KEYS.lastRegion, null, (v): v is Region | null =>
+    v === null || isRegion(v),
+  );
 }
 
 export function saveLastRegion(region: Region) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(region));
-  } catch {
-    // ignore quota/access errors
-  }
+  safeSetJSON(STORAGE_KEYS.lastRegion, region);
 }

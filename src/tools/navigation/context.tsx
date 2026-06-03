@@ -8,36 +8,30 @@ import {
   type ReactNode,
 } from "react";
 import { useMap } from "../../lib/MapContext";
+import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from "../../lib/storage";
 import type { LatLng } from "../../lib/types";
 
-const STORAGE_KEY = "tur-vibes:navigation:bearings";
+function isBearing(value: unknown): value is Bearing {
+  if (!value || typeof value !== "object") return false;
+  const b = value as Record<string, unknown>;
+  const point = b.point as Record<string, unknown> | undefined;
+  return (
+    typeof b.id === "string" &&
+    typeof b.heading === "number" &&
+    point != null &&
+    typeof point.latitude === "number" &&
+    typeof point.longitude === "number"
+  );
+}
 
 function loadBearings(): Bearing[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (b): b is Bearing =>
-        b &&
-        typeof b.id === "string" &&
-        b.point &&
-        typeof b.point.latitude === "number" &&
-        typeof b.point.longitude === "number" &&
-        typeof b.heading === "number",
-    );
-  } catch {
-    return [];
-  }
+  const raw = safeGetJSON<unknown>(STORAGE_KEYS.navigationBearings, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isBearing);
 }
 
 function saveBearings(bearings: Bearing[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bearings));
-  } catch {
-    // ignore storage errors (quota, private mode)
-  }
+  safeSetJSON(STORAGE_KEYS.navigationBearings, bearings);
 }
 
 export type Bearing = {

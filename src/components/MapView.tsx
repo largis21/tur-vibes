@@ -56,8 +56,7 @@ export function MapView({ activeToolId, children }: MapViewProps) {
   const { mapRef, cursorCoordinate, regionListeners } = useMap();
   const { showSteepness, steepnessOpacity } = useUiState();
   const { open: openPointInfo } = usePointInfo();
-  const { offlineMode, savedRegions, selectionBounds, downloading } =
-    useOffline();
+  const { offlineMode, savedRegions, polygon, downloading } = useOffline();
   const [mapReady, setMapReady] = useState(false);
 
   // Bump on every download finish so the offline raster sources remount.
@@ -273,7 +272,7 @@ export function MapView({ activeToolId, children }: MapViewProps) {
       <SavedRegionsOverlay
         key={`saved-regions-${offlineMode ? "off" : "on"}-${showSteepness ? "s" : "n"}-${tilesVersion}`}
         regions={savedRegions}
-        selectionBounds={activeToolId === "offline" ? selectionBounds : null}
+        selectionPolygon={activeToolId === "offline" ? polygon : null}
       />
       <UserLocation />
       <PointInfoMapLayer />

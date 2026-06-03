@@ -7,10 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from "./storage";
 
 type Status = "unknown" | "granted" | "denied";
-
-const STORAGE_KEY = "tur-vibes:permissions";
 
 type PermissionsState = {
   location: Status;
@@ -28,31 +27,23 @@ function getIOSOrientationCtor(): IOSOrientationCtor | null {
   return Ctor;
 }
 
-/** True on iOS where DeviceOrientation requires a one-time prompt. */
-export function orientationRequiresPermission(): boolean {
-  return getIOSOrientationCtor() != null;
+function isStatus(v: unknown): v is Status {
+  return v === "unknown" || v === "granted" || v === "denied";
 }
 
 function loadStored(): PermissionsState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { location: "unknown", orientation: "unknown" };
-    const parsed = JSON.parse(raw);
-    return {
-      location: parsed?.location ?? "unknown",
-      orientation: parsed?.orientation ?? "unknown",
-    };
-  } catch {
-    return { location: "unknown", orientation: "unknown" };
-  }
+  const raw = safeGetJSON<Record<string, unknown>>(
+    STORAGE_KEYS.permissions,
+    {},
+  );
+  return {
+    location: isStatus(raw.location) ? raw.location : "unknown",
+    orientation: isStatus(raw.orientation) ? raw.orientation : "unknown",
+  };
 }
 
 function persist(state: PermissionsState) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore
-  }
+  safeSetJSON(STORAGE_KEYS.permissions, state);
 }
 
 type PermissionsValue = PermissionsState & {

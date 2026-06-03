@@ -1,21 +1,18 @@
-const KEY = "tur-vibes:offline-mode";
+import {
+  safeGetItem,
+  safeRemoveItem,
+  safeSetItem,
+  STORAGE_KEYS,
+} from "./storage";
 
 export function loadOfflineMode(): boolean {
-  try {
-    return localStorage.getItem(KEY) === "1";
-  } catch {
-    return false;
-  }
+  return safeGetItem(STORAGE_KEYS.offlineMode) === "1";
 }
 
 export function saveOfflineMode(enabled: boolean) {
-  try {
-    if (enabled) {
-      localStorage.setItem(KEY, "1");
-    } else {
-      localStorage.removeItem(KEY);
-    }
-  } catch {
-    // ignore
+  if (enabled) {
+    safeSetItem(STORAGE_KEYS.offlineMode, "1");
+  } else {
+    safeRemoveItem(STORAGE_KEYS.offlineMode);
   }
 }

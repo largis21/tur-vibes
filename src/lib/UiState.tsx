@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { safeGetItem, safeSetItem, STORAGE_KEYS } from "./storage";
 
 type UiState = {
   showSteepness: boolean;
@@ -23,19 +24,14 @@ type UiState = {
 
 const UiStateContext = createContext<UiState | null>(null);
 
-const STEEPNESS_OPACITY_KEY = "tur-vibes:steepness-opacity";
 const DEFAULT_STEEPNESS_OPACITY = 0.5;
 
 function loadSteepnessOpacity(): number {
-  try {
-    const raw = localStorage.getItem(STEEPNESS_OPACITY_KEY);
-    if (raw == null) return DEFAULT_STEEPNESS_OPACITY;
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) return DEFAULT_STEEPNESS_OPACITY;
-    return Math.min(1, Math.max(0, parsed));
-  } catch {
-    return DEFAULT_STEEPNESS_OPACITY;
-  }
+  const raw = safeGetItem(STORAGE_KEYS.steepnessOpacity);
+  if (raw == null) return DEFAULT_STEEPNESS_OPACITY;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return DEFAULT_STEEPNESS_OPACITY;
+  return Math.min(1, Math.max(0, parsed));
 }
 
 export function UiStateProvider({ children }: { children: ReactNode }) {
@@ -50,11 +46,7 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STEEPNESS_OPACITY_KEY, String(steepnessOpacity));
-    } catch {
-      // ignore
-    }
+    safeSetItem(STORAGE_KEYS.steepnessOpacity, String(steepnessOpacity));
   }, [steepnessOpacity]);
 
   const toggleSteepness = useCallback(() => setShowSteepness((v) => !v), []);
@@ -74,16 +66,7 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
       closeSidebar,
       toggleSidebar,
     }),
-    [
-      showSteepness,
-      toggleSteepness,
-      steepnessOpacity,
-      setSteepnessOpacity,
-      sidebarOpen,
-      openSidebar,
-      closeSidebar,
-      toggleSidebar,
-    ],
+    [showSteepness, steepnessOpacity, sidebarOpen],
   );
 
   return (

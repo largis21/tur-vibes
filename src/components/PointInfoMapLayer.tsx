@@ -1,18 +1,13 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import { useEffect, useMemo, useState } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
+import { metersPerPixel } from "../lib/geo";
 import { destinationPoint } from "../lib/geoBearing";
 import { useMap } from "../lib/MapContext";
 import { usePointInfo } from "../lib/PointInfoContext";
 
 /** Length of the steepest-descent arrow, in screen pixels. */
 const ARROW_LENGTH_PX = 24;
-
-function metersPerPixel(latitude: number, zoom: number): number {
-  return (
-    (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / Math.pow(2, zoom)
-  );
-}
 
 export function PointInfoMapLayer() {
   const { point, info } = usePointInfo();

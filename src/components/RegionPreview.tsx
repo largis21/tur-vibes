@@ -3,29 +3,31 @@ import {
   getOfflineTile,
   latToTileYFloat,
   lonToTileXFloat,
-  type OfflineRegionBounds,
+  polygonBBox,
 } from "../lib/offlineTiles";
+import type { LatLng } from "../lib/types";
 
 /** Zoom used for previews. Matches the default download minZoom. */
 const PREVIEW_ZOOM = 11;
 const TILE_SIZE = 256;
 
 type Props = {
-  bounds: OfflineRegionBounds;
+  polygon: LatLng[];
   width: number;
   height: number;
 };
 
 /**
  * Renders a tiny preview of a saved offline region by stitching cached topo
- * tiles from IndexedDB onto a canvas, cropped to the region bounds.
+ * tiles from IndexedDB onto a canvas, masked to the polygon shape.
  */
-export function RegionPreview({ bounds, width, height }: Props) {
+export function RegionPreview({ polygon, width, height }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (polygon.length < 3) return;
     let cancelled = false;
 
     const dpr = window.devicePixelRatio || 1;
@@ -37,10 +39,11 @@ export function RegionPreview({ bounds, width, height }: Props) {
     ctx.fillStyle = "#1f2937";
     ctx.fillRect(0, 0, width, height);
 
-    const xMinF = lonToTileXFloat(bounds.minLon, PREVIEW_ZOOM);
-    const xMaxF = lonToTileXFloat(bounds.maxLon, PREVIEW_ZOOM);
-    const yMinF = latToTileYFloat(bounds.maxLat, PREVIEW_ZOOM);
-    const yMaxF = latToTileYFloat(bounds.minLat, PREVIEW_ZOOM);
+    const bbox = polygonBBox(polygon);
+    const xMinF = lonToTileXFloat(bbox.minLon, PREVIEW_ZOOM);
+    const xMaxF = lonToTileXFloat(bbox.maxLon, PREVIEW_ZOOM);
+    const yMinF = latToTileYFloat(bbox.maxLat, PREVIEW_ZOOM);
+    const yMaxF = latToTileYFloat(bbox.minLat, PREVIEW_ZOOM);
     const srcW = (xMaxF - xMinF) * TILE_SIZE;
     const srcH = (yMaxF - yMinF) * TILE_SIZE;
     if (srcW <= 0 || srcH <= 0) return;
@@ -52,12 +55,31 @@ export function RegionPreview({ bounds, width, height }: Props) {
     const offsetX = (width - drawW) / 2;
     const offsetY = (height - drawH) / 2;
 
+    function projectLatLngToCanvas(p: LatLng): [number, number] {
+      const tx = lonToTileXFloat(p.longitude, PREVIEW_ZOOM);
+      const ty = latToTileYFloat(p.latitude, PREVIEW_ZOOM);
+      return [
+        (tx - xMinF) * TILE_SIZE * scale + offsetX,
+        (ty - yMinF) * TILE_SIZE * scale + offsetY,
+      ];
+    }
+
     const xMin = Math.floor(xMinF);
     const xMax = Math.floor(xMaxF);
     const yMin = Math.floor(yMinF);
     const yMax = Math.floor(yMaxF);
 
     (async () => {
+      ctx.save();
+      ctx.beginPath();
+      polygon.forEach((p, i) => {
+        const [cx, cy] = projectLatLngToCanvas(p);
+        if (i === 0) ctx.moveTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      });
+      ctx.closePath();
+      ctx.clip();
+
       for (let ty = yMin; ty <= yMax; ty++) {
         for (let tx = xMin; tx <= xMax; tx++) {
           const buf = await getOfflineTile("topo", PREVIEW_ZOOM, tx, ty);
@@ -81,12 +103,13 @@ export function RegionPreview({ bounds, width, height }: Props) {
           bitmap.close?.();
         }
       }
+      ctx.restore();
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [bounds, width, height]);
+  }, [polygon, width, height]);
 
   return (
     <canvas

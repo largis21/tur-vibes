@@ -58,7 +58,7 @@ export function PointInfoProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({ point, info, loading, error, open, close }),
-    [point, info, loading, error, open, close],
+    [point, info, loading, error],
   );
 
   return (

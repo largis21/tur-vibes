@@ -38,3 +38,10 @@ export function formatDistance(distanceMeters: number) {
   }
   return `${(distanceMeters / 1000).toFixed(2)} km`;
 }
+
+/** Approximate ground meters per screen pixel at a given Web Mercator zoom. */
+export function metersPerPixel(latitude: number, zoom: number): number {
+  return (
+    (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / Math.pow(2, zoom)
+  );
+}

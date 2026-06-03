@@ -1,25 +1,31 @@
 import type { FeatureCollection, LineString } from "geojson";
 import { useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
-import { boundsIntersect, type OfflineRegionBounds } from "../lib/offlineTiles";
+import { polygonBBox, polygonOverlapsBounds } from "../lib/offlineTiles";
 import type { SavedOfflineRegion } from "../lib/savedRegions";
+import type { LatLng } from "../lib/types";
 
 type FeatureProps = { color: string; width: number };
 
 export function SavedRegionsOverlay({
   regions,
-  selectionBounds,
+  selectionPolygon,
 }: {
   regions: SavedOfflineRegion[];
-  selectionBounds?: OfflineRegionBounds | null;
+  selectionPolygon?: LatLng[] | null;
 }) {
   const fc = useMemo<FeatureCollection<LineString, FeatureProps>>(() => {
     return {
       type: "FeatureCollection",
       features: regions.map((region) => {
-        const { minLat, maxLat, minLon, maxLon } = region.bounds;
+        const ring = region.polygon.map(
+          (p) => [p.longitude, p.latitude] as [number, number],
+        );
+        if (ring.length > 0) ring.push(ring[0]!);
         const highlighted =
-          !!selectionBounds && boundsIntersect(region.bounds, selectionBounds);
+          !!selectionPolygon &&
+          selectionPolygon.length >= 3 &&
+          polygonOverlapsBounds(selectionPolygon, polygonBBox(region.polygon));
         return {
           type: "Feature",
           id: region.id,
@@ -29,18 +35,12 @@ export function SavedRegionsOverlay({
           },
           geometry: {
             type: "LineString",
-            coordinates: [
-              [minLon, maxLat],
-              [maxLon, maxLat],
-              [maxLon, minLat],
-              [minLon, minLat],
-              [minLon, maxLat],
-            ],
+            coordinates: ring,
           },
         };
       }),
     };
-  }, [regions, selectionBounds]);
+  }, [regions, selectionPolygon]);
 
   if (regions.length === 0) return null;
 
