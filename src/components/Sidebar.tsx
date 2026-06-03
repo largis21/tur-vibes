@@ -91,7 +91,8 @@ export function Sidebar({
               }}
             >
               <Icon name={tool.icon} size={20} />
-              <span>{tool.title}</span>
+              <span style={{ flex: 1 }}>{tool.title}</span>
+              {tool.Badge ? <tool.Badge /> : null}
             </button>
           );
         })}

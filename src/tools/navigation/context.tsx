@@ -54,6 +54,12 @@ type NavigationContextValue = {
   removeBearing: (id: string) => void;
   setBearingHeading: (id: string, heading: number) => void;
   clearBearings: () => void;
+
+  /** Whether device-compass tracking is active. */
+  tracking: boolean;
+  setTracking: (v: boolean) => void;
+  /** Current device heading in degrees (0 = north, CW). null until first reading. */
+  deviceHeading: number | null;
 };
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
@@ -79,6 +85,47 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [selectedBearingId, setSelectedBearingId] = useState<string | null>(
     null,
   );
+  const [tracking, setTracking] = useState(false);
+  const [deviceHeading, setDeviceHeading] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!tracking) {
+      setDeviceHeading(null);
+      return;
+    }
+    function handleOrientation(e: DeviceOrientationEvent) {
+      // iOS exposes webkitCompassHeading (0 = north, increasing clockwise).
+      const ios = (
+        e as DeviceOrientationEvent & { webkitCompassHeading?: number }
+      ).webkitCompassHeading;
+      if (ios != null) {
+        setDeviceHeading(ios);
+        return;
+      }
+      // Android absolute: alpha is degrees CCW from north → convert to CW.
+      if (e.alpha != null) {
+        setDeviceHeading((360 - e.alpha) % 360);
+      }
+    }
+    window.addEventListener(
+      "deviceorientationabsolute",
+      handleOrientation as EventListener,
+    );
+    window.addEventListener(
+      "deviceorientation",
+      handleOrientation as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "deviceorientationabsolute",
+        handleOrientation as EventListener,
+      );
+      window.removeEventListener(
+        "deviceorientation",
+        handleOrientation as EventListener,
+      );
+    };
+  }, [tracking]);
 
   useEffect(() => {
     saveBearings(bearings);
@@ -121,6 +168,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       removeBearing,
       setBearingHeading,
       clearBearings,
+      tracking,
+      setTracking,
+      deviceHeading,
     }),
     [
       subToolId,
@@ -130,6 +180,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       removeBearing,
       setBearingHeading,
       clearBearings,
+      tracking,
+      deviceHeading,
     ],
   );
 

@@ -9,10 +9,12 @@ const VERTEX_LAYER_ID = "offline-polygon-vertices";
 const HIT_TOLERANCE = 14;
 
 export function OfflineMapChildren() {
-  const { polygon, updatePolygonPoint, selfIntersecting } = useOffline();
+  const { polygon, updatePolygonPoint, selfIntersecting, downloading } = useOffline();
   const { mapRef } = useMap();
   const polygonRef = useRef(polygon);
   polygonRef.current = polygon;
+  const downloadingRef = useRef(downloading);
+  downloadingRef.current = downloading;
 
   // Vertex drag handling. Attaches pointer listeners to the map's canvas
   // and disables map panning while a vertex is being moved.
@@ -31,6 +33,7 @@ export function OfflineMapChildren() {
     }
 
     function onPointerDown(e: PointerEvent) {
+      if (downloadingRef.current) return;
       if (polygonRef.current.length === 0) return;
       const m = mapRef.current;
       if (!m) return;

@@ -55,14 +55,18 @@ export function OfflineOverlay() {
   }
 
   function exitCreate() {
-    if (downloading) cancelDownload();
+    if (downloading) {
+      // Let the download keep running — just return to the list.
+      setMode("list");
+      return;
+    }
     clearPolygon();
     setMode("list");
   }
 
   function handleClose() {
-    if (mode === "create") {
-      if (downloading) cancelDownload();
+    // If a download is running, leave it running in the background.
+    if (mode === "create" && !downloading) {
       clearPolygon();
     }
     deactivateTool();
@@ -96,6 +100,10 @@ export function OfflineOverlay() {
       savedRegions={savedRegions}
       regionSizes={regionSizes}
       onRemoveRegion={removeSavedRegion}
+      downloading={downloading}
+      progress={progress}
+      onResumeCreate={() => setMode("create")}
+      onCancelDownload={cancelDownload}
     />
   );
 }
@@ -113,6 +121,10 @@ function ListView({
   savedRegions,
   regionSizes,
   onRemoveRegion,
+  downloading,
+  progress,
+  onResumeCreate,
+  onCancelDownload,
 }: {
   onClose: () => void;
   onNewRegion: () => void;
@@ -122,6 +134,10 @@ function ListView({
   savedRegions: SavedOfflineRegion[];
   regionSizes: Record<string, number>;
   onRemoveRegion: (id: string) => Promise<void>;
+  downloading: boolean;
+  progress: { total: number; completed: number; failed: number } | null;
+  onResumeCreate: () => void;
+  onCancelDownload: () => void;
 }) {
   return (
     <div style={panelStyle}>
@@ -156,6 +172,82 @@ function ListView({
         </div>
         <ToggleSwitch checked={offlineMode} onChange={setOfflineMode} />
       </div>
+
+      {/* In-progress download banner */}
+      {downloading && progress ? (
+        <div
+          style={{
+            background: "rgba(249, 115, 22, 0.15)",
+            border: "1px solid rgba(249, 115, 22, 0.4)",
+            borderRadius: 12,
+            padding: "10px 12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Icon name="cloud-download" size={16} color="#f97316" />
+            <span style={{ color: "#f97316", fontSize: 13, fontWeight: 700, flex: 1 }}>
+              Downloading…{" "}
+              {progress.total
+                ? `${Math.round(((progress.completed + progress.failed) / progress.total) * 100)}%`
+                : ""}
+            </span>
+            <button
+              onClick={onResumeCreate}
+              style={{
+                color: "#d1d5db",
+                fontSize: 12,
+                fontWeight: 600,
+                padding: "4px 8px",
+                borderRadius: 6,
+                background: "rgba(255,255,255,0.1)",
+              }}
+            >
+              View
+            </button>
+            <button
+              onClick={onCancelDownload}
+              aria-label="Cancel download"
+              style={{
+                color: "#9ca3af",
+                fontSize: 12,
+                fontWeight: 600,
+                padding: "4px 8px",
+                borderRadius: 6,
+                background: "rgba(255,255,255,0.1)",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.12)",
+              borderRadius: 4,
+              height: 4,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                background: "#f97316",
+                height: "100%",
+                width: `${
+                  progress.total
+                    ? Math.min(
+                        100,
+                        ((progress.completed + progress.failed) / progress.total) * 100,
+                      )
+                    : 0
+                }%`,
+                transition: "width 0.1s linear",
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       <div
         style={{
@@ -366,11 +458,7 @@ function CreateView({
         <button
           aria-label="Back"
           onClick={onBack}
-          disabled={downloading}
-          style={{
-            ...iconButton,
-            opacity: downloading ? 0.4 : 1,
-          }}
+          style={iconButton}
         >
           <Icon name="close" size={20} color="#fff" />
         </button>
@@ -500,6 +588,16 @@ function CreateView({
               {progress.completed + progress.failed}/{progress.total}
               {progress.failed > 0 ? ` (${progress.failed} failed)` : ""}
             </div>
+            <div
+              style={{
+                color: "#6b7280",
+                fontSize: 11,
+                textAlign: "center",
+                fontStyle: "italic",
+              }}
+            >
+              You can go back — the download continues in the background.
+            </div>
           </div>
         ) : null}
 
@@ -624,3 +722,32 @@ const primaryButton: React.CSSProperties = {
   fontWeight: 700,
   background: "#f97316",
 };
+
+// ---------------------------------------------------------------------------
+// Sidebar badge – shown on the tool button while a download is in progress.
+// Exported so offline/index.ts can attach it to the tool definition.
+// ---------------------------------------------------------------------------
+
+export function OfflineDownloadBadge() {
+  const { downloading, progress } = useOffline();
+  if (!downloading || !progress) return null;
+  const pct = progress.total
+    ? Math.round(((progress.completed + progress.failed) / progress.total) * 100)
+    : 0;
+  return (
+    <span
+      style={{
+        background: "#f97316",
+        color: "#fff",
+        fontSize: 11,
+        fontWeight: 700,
+        borderRadius: 6,
+        padding: "2px 6px",
+        marginLeft: 4,
+        flexShrink: 0,
+      }}
+    >
+      {pct}%
+    </span>
+  );
+}

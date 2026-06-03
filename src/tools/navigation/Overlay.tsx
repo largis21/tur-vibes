@@ -19,6 +19,9 @@ export function NavigationOverlay() {
     removeBearing,
     setBearingHeading,
     clearBearings,
+    tracking,
+    setTracking,
+    deviceHeading,
   } = useNavigation();
 
   const selected = bearings.find((b) => b.id === selectedBearingId) ?? null;
@@ -78,6 +81,26 @@ export function NavigationOverlay() {
               </button>
             );
           })}
+          {/* Compass-tracking toggle */}
+          <button
+            onClick={() => setTracking(!tracking)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 10,
+              background: tracking ? "#3b82f6" : "rgba(255,255,255,0.12)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Icon name="compass" size={15} color="#fff" />
+            {tracking && deviceHeading !== null
+              ? `${Math.round(deviceHeading)}°`
+              : "Track"}
+          </button>
         </div>
         <button
           aria-label="Clear all bearings"

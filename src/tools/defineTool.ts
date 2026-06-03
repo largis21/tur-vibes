@@ -35,6 +35,12 @@ export type ToolDefinition = {
   Provider?: ComponentType<{ children: ReactNode }>;
   MapChildren?: ComponentType;
   Overlay?: ComponentType;
+  /**
+   * Optional badge rendered inside the tool's sidebar button. Useful for
+   * surfacing background activity (e.g. a download-progress indicator) even
+   * when the tool's overlay is not open.
+   */
+  Badge?: ComponentType;
   /** Whether the centre crosshair is visible while this tool is active. */
   cursor?: boolean;
   /**

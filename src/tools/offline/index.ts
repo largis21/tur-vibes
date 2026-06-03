@@ -1,7 +1,7 @@
 import { defineTool } from "../defineTool";
 import { OfflineProvider } from "./context";
 import { OfflineMapChildren } from "./MapChildren";
-import { OfflineOverlay } from "./Overlay";
+import { OfflineDownloadBadge, OfflineOverlay } from "./Overlay";
 
 export const offlineTool = defineTool({
   id: "offline",
@@ -10,4 +10,5 @@ export const offlineTool = defineTool({
   Provider: OfflineProvider,
   MapChildren: OfflineMapChildren,
   Overlay: OfflineOverlay,
+  Badge: OfflineDownloadBadge,
 });
