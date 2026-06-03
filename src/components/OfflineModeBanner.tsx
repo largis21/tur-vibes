@@ -1,0 +1,41 @@
+import { Icon } from "./Icon";
+import { useOffline } from "../tools/offline/context";
+
+export function OfflineModeBanner() {
+  const { setOfflineMode } = useOffline();
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 16,
+        left: 16,
+        right: 16,
+        background: "rgba(249, 115, 22, 0.95)",
+        borderRadius: 12,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "10px 14px",
+        zIndex: 25,
+      }}
+    >
+      <Icon name="cloud-offline" size={18} color="#fff" />
+      <span style={{ flex: 1, color: "#fff", fontSize: 14, fontWeight: 700 }}>
+        Offline mode
+      </span>
+      <button
+        onClick={() => setOfflineMode(false)}
+        style={{
+          background: "rgba(0,0,0,0.25)",
+          borderRadius: 8,
+          padding: "6px 10px",
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: 700,
+        }}
+      >
+        Disable
+      </button>
+    </div>
+  );
+}

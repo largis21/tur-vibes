@@ -1,25 +1,29 @@
 {
   "name": "tur-vibes",
   "version": "1.0.0",
-  "main": "index.ts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
-    "expo": "~54.0.0",
-    "expo-file-system": "~19.0.23",
-    "expo-location": "~19.0.8",
-    "expo-status-bar": "~3.0.9",
-    "react": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-maps": "1.20.1"
+    "maplibre-gl": "^4.7.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-map-gl": "^7.1.7",
+    "web-haptics": "^0.0.6"
   },
   "devDependencies": {
-    "@types/react": "~19.1.10",
-    "typescript": "~5.9.2"
-  },
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
-  },
-  "private": true
+    "@types/geojson": "^7946.0.14",
+    "@types/node": "^25.9.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.10",
+    "vite-plugin-pwa": "^0.20.5"
+  }
 }
