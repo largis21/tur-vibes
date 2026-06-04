@@ -159,6 +159,7 @@ export default defineConfig({
     allowedHosts: ["mildly-epic-eel.ngrok-free.app"],
   },
   preview: {
+    port: 5173,
     allowedHosts: ["mildly-epic-eel.ngrok-free.app"],
   },
 });

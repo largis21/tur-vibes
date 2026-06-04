@@ -92,6 +92,19 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Automatically enable offline mode when the browser goes offline
+  useEffect(() => {
+    const handleOffline = () => {
+      setOfflineModeState(true);
+      saveOfflineMode(true);
+    };
+
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   // Recompute per-region sizes whenever the saved-region list changes or a
   // download finishes (storageBytes acts as a proxy for "tile contents may
   // have changed").

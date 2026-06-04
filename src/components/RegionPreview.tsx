@@ -1,11 +1,10 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import {
   getOfflineTile,
   latToTileYFloat,
   lonToTileXFloat,
   polygonBBox,
 } from "../lib/offlineTiles";
-import { sourcesIntersecting } from "../lib/mapSources";
 import type { LatLng } from "../lib/types";
 
 /** Zoom used for previews. Matches the default download minZoom. */
@@ -19,25 +18,16 @@ type Props = {
 };
 
 /**
- * Renders a tiny preview of a saved offline region by stitching cached tiles
- * from IndexedDB onto a canvas, masked to the polygon shape.
- * Automatically selects the appropriate basemap(s) based on the polygon location.
+ * Renders a tiny preview of a saved offline region by stitching cached topo
+ * tiles from IndexedDB onto a canvas, masked to the polygon shape.
  */
 export function RegionPreview({ polygon, width, height }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Determine which basemap to render based on polygon location.
-  // Use the last (topmost) basemap that intersects the polygon.
-  const sourceToRender = useMemo(() => {
-    if (polygon.length < 3) return null;
-    const basemaps = sourcesIntersecting(polygon).filter((s) => s.kind === "basemap");
-    return basemaps.length > 0 ? basemaps[basemaps.length - 1].id : null;
-  }, [polygon]);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    if (polygon.length < 3 || !sourceToRender) return;
+    if (polygon.length < 3) return;
     let cancelled = false;
 
     const dpr = window.devicePixelRatio || 1;
@@ -92,7 +82,7 @@ export function RegionPreview({ polygon, width, height }: Props) {
 
       for (let ty = yMin; ty <= yMax; ty++) {
         for (let tx = xMin; tx <= xMax; tx++) {
-          const buf = await getOfflineTile(sourceToRender, PREVIEW_ZOOM, tx, ty);
+          const buf = await getOfflineTile("topo", PREVIEW_ZOOM, tx, ty);
           if (cancelled || !buf) continue;
           const blob = new Blob([buf]);
           let bitmap: ImageBitmap;
@@ -119,7 +109,7 @@ export function RegionPreview({ polygon, width, height }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [polygon, width, height, sourceToRender]);
+  }, [polygon, width, height]);
 
   return (
     <canvas

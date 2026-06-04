@@ -20,7 +20,27 @@ import {
   PiFunnel,
   PiSortAscending,
 } from "react-icons/pi";
-import type { IconName } from "../tools/defineTool";
+
+type IconName =
+  | "close"
+  | "menu"
+  | "add"
+  | "backspace"
+  | "locate"
+  | "download"
+  | "stop"
+  | "trash"
+  | "cloud-offline"
+  | "trending-up"
+  | "resize"
+  | "cloud-download"
+  | "shield"
+  | "cog"
+  | "compass"
+  | "search"
+  | "location"
+  | "filter"
+  | "sort";
 
 const ICONS: Record<IconName, IconType> = {
   close: PiX,
