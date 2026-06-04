@@ -3,12 +3,14 @@ import type { ToolDefinition } from "./defineTool";
 import { measureTool } from "./measure";
 import { navigationTool } from "./navigation";
 import { offlineTool } from "./offline";
+import { poiTool } from "./poi";
 import { settingsTool } from "./settings";
 
 /** Tools shown in the sidebar. The default tool is intentionally omitted. */
 export const tools: ToolDefinition[] = [
   navigationTool,
   measureTool,
+  poiTool,
   offlineTool,
   settingsTool,
 ];

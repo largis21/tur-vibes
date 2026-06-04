@@ -1,4 +1,4 @@
-import { Icon } from "./Icon";
+import { PiCloudSlash } from "react-icons/pi";
 import { useOffline } from "../tools/offline/context";
 
 export function OfflineModeBanner() {
@@ -19,7 +19,11 @@ export function OfflineModeBanner() {
         zIndex: 25,
       }}
     >
-      <Icon name="cloud-offline" size={18} color="#fff" />
+      <PiCloudSlash
+        size={18}
+        color="#fff"
+        style={{ display: "block", flexShrink: 0 }}
+      />
       <span style={{ flex: 1, color: "#fff", fontSize: 14, fontWeight: 700 }}>
         Offline mode
       </span>

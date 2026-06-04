@@ -108,19 +108,25 @@ type StedPunktResponse = {
 
 /**
  * Finds the nearest named place to the given coordinate using Kartverket's
- * Stedsnavn punkt API. Returns a formatted label or null if nothing is found.
+ * Stedsnavn punkt API. Returns a structured result or null if nothing is found.
  */
+export type NearestPlaceResult = {
+  name: string;
+  type: string;
+  distanceM: number;
+};
+
 export async function fetchNearestPlaceName(
   point: LatLng,
   signal?: AbortSignal,
-): Promise<string | null> {
+): Promise<NearestPlaceResult | null> {
   const params = new URLSearchParams({
     nord: String(point.latitude),
     ost: String(point.longitude),
     koordsys: "4326",
     utkoordsys: "4326",
-    radius: "2000",
-    treffPerSide: "5",
+    radius: "200",
+    treffPerSide: "10",
     side: "1",
   });
   const res = await fetch(`${STEDSNAVN_PUNKT_URL}?${params}`, { signal });
@@ -158,7 +164,9 @@ export async function fetchNearestPlaceName(
     best.stedsnavn[0]?.skrivemåte;
   if (!name) return null;
 
-  const dist = best.meterFraPunkt;
-  const distStr = dist < 1000 ? `${dist} m` : `${(dist / 1000).toFixed(1)} km`;
-  return `${name} (${best.navneobjekttype}, ${distStr})`;
+  return {
+    name,
+    type: best.navneobjekttype,
+    distanceM: best.meterFraPunkt,
+  };
 }

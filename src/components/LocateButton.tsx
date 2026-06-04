@@ -1,4 +1,4 @@
-import { Icon } from "./Icon";
+import { PiCrosshair } from "react-icons/pi";
 import { FabButton } from "./FabButton";
 import { useMap } from "../lib/MapContext";
 import { usePermissions } from "../lib/permissions";
@@ -24,7 +24,7 @@ export function LocateButton() {
 
   return (
     <FabButton aria-label="Center on my location" onClick={handleClick}>
-      <Icon name="locate" size={24} />
+      <PiCrosshair size={24} style={{ display: "block", flexShrink: 0 }} />
     </FabButton>
   );
 }

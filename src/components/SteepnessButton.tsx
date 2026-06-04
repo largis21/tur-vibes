@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Icon } from "./Icon";
+import { PiTrendUp } from "react-icons/pi";
 import { FabButton } from "./FabButton";
 import { useUiState } from "../lib/UiState";
 
@@ -80,7 +80,7 @@ export function SteepnessButton() {
         onClick={(e) => e.preventDefault()}
         style={{ touchAction: "none" }}
       >
-        <Icon name="trending-up" size={24} />
+        <PiTrendUp size={24} style={{ display: "block", flexShrink: 0 }} />
       </FabButton>
       {dragging ? <OpacityIndicator opacity={steepnessOpacity} /> : null}
     </div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon } from "./Icon";
+import { PiX } from "react-icons/pi";
 
 interface ModalShellProps {
   children: ReactNode;
@@ -87,7 +87,11 @@ export function ModalShell({
               flexShrink: 0,
             }}
           >
-            <Icon name="close" size={18} color="#fff" />
+            <PiX
+              size={18}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
           </button>
         )}
       </div>

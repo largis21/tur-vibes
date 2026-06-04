@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { usePointInfo } from "../lib/PointInfoContext";
+import { usePoi } from "../tools/poi/context";
 import { ModalShell } from "./ModalShell";
+import { PiMapPin } from "react-icons/pi";
 
 function formatCoord(value: number) {
   return value.toFixed(5);
@@ -12,8 +15,25 @@ function compassFromBearing(deg: number): string {
 
 export function PointInfoModal() {
   const { point, info, placeName, loading, error, close } = usePointInfo();
+  const { addPoi } = usePoi();
+  const [saving, setSaving] = useState(false);
 
   if (!point) return null;
+
+  async function handleSaveAsPoi() {
+    if (!point) return;
+    setSaving(true);
+    await addPoi({
+      lat: point.latitude,
+      lng: point.longitude,
+      color: "#3b82f6",
+      locationType: null,
+      elevation: info?.elevation ?? null,
+    });
+    setSaving(false);
+    // addPoi already calls setSelectedPoiId so CustomPoiCard opens automatically
+    close();
+  }
 
   return (
     <ModalShell title="Point info" subtitle={placeName} onClose={close}>
@@ -67,6 +87,34 @@ export function PointInfoModal() {
           {error} — elevation requires an internet connection.
         </div>
       ) : null}
+
+      <button
+        onClick={handleSaveAsPoi}
+        disabled={saving}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          width: "100%",
+          padding: "11px 14px",
+          borderRadius: 12,
+          background: "rgba(59,130,246,0.15)",
+          border: "1px solid rgba(59,130,246,0.4)",
+          color: "#60a5fa",
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: saving ? "default" : "pointer",
+          opacity: saving ? 0.6 : 1,
+        }}
+      >
+        <PiMapPin
+          size={16}
+          color="#60a5fa"
+          style={{ display: "block", flexShrink: 0 }}
+        />
+        {saving ? "Saving…" : "Save as POI"}
+      </button>
     </ModalShell>
   );
 }

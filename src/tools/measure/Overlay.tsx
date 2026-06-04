@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { formatDistance, getTotalDistanceMeters } from "../../lib/geo";
 import { useMap } from "../../lib/MapContext";
-import { Icon } from "../../components/Icon";
+import { PiBackspace, PiPlus } from "react-icons/pi";
 import { HeaderShell } from "../../components/HeaderShell";
 import { useMeasure } from "./context";
 
@@ -31,7 +31,11 @@ export function MeasureOverlay() {
             opacity: points.length === 0 ? 0.35 : 1,
           }}
         >
-          <Icon name="backspace" size={20} color="#fff" />
+          <PiBackspace
+            size={20}
+            color="#fff"
+            style={{ display: "block", flexShrink: 0 }}
+          />
         </button>
         <div style={{ flex: 1, textAlign: "center" }}>
           <div
@@ -80,7 +84,11 @@ export function MeasureOverlay() {
           zIndex: 20,
         }}
       >
-        <Icon name="add" size={32} color="#fff" />
+        <PiPlus
+          size={32}
+          color="#fff"
+          style={{ display: "block", flexShrink: 0 }}
+        />
       </button>
     </>
   );

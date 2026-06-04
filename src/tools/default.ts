@@ -1,3 +1,4 @@
+import { PiMapTrifold } from "react-icons/pi";
 import { defineTool } from "./defineTool";
 
 /**
@@ -8,7 +9,7 @@ import { defineTool } from "./defineTool";
 export const defaultTool = defineTool({
   id: "default",
   title: "Map",
-  icon: "menu",
+  icon: PiMapTrifold,
   defaultUi: [
     "compass",
     "coordsBox",

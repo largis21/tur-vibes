@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "../tools/defineTool";
-import { Icon } from "./Icon";
+import { PiX } from "react-icons/pi";
 import { LocationSearch } from "./LocationSearch";
 
 type SidebarProps = {
@@ -67,7 +67,7 @@ export function Sidebar({
               justifyContent: "center",
             }}
           >
-            <Icon name="close" size={22} />
+            <PiX size={22} />
           </button>
         </div>
         <LocationSearch onSelectResult={onClose} />
@@ -92,7 +92,7 @@ export function Sidebar({
                 textAlign: "left",
               }}
             >
-              <Icon name={tool.icon} size={20} />
+              <tool.icon size={20} />
               <span style={{ flex: 1 }}>{tool.title}</span>
               {tool.Badge ? <tool.Badge /> : null}
             </button>

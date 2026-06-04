@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "../lib/MapContext";
-import { Icon } from "./Icon";
+import { PiMagnifyingGlass, PiX, PiMapPin } from "react-icons/pi";
 
 type StedResult = {
   stedsnummer: number;
@@ -163,7 +163,7 @@ export function LocationSearch({
             pointerEvents: "none",
           }}
         >
-          <Icon name="search" size={18} />
+          <PiMagnifyingGlass size={18} style={{ display: "block" }} />
         </span>
         <input
           ref={inputRef}
@@ -203,7 +203,7 @@ export function LocationSearch({
               padding: 2,
             }}
           >
-            <Icon name="close" size={16} />
+            <PiX size={16} style={{ display: "block" }} />
           </button>
         )}
       </div>
@@ -254,7 +254,7 @@ export function LocationSearch({
                 }}
               >
                 <span style={{ marginTop: 2, color: "#9ca3af", flexShrink: 0 }}>
-                  <Icon name="location" size={14} />
+                  <PiMapPin size={14} style={{ display: "block" }} />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontWeight: 600 }}>

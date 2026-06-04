@@ -1,23 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-
-export type IconName =
-  | "close"
-  | "menu"
-  | "add"
-  | "backspace"
-  | "locate"
-  | "download"
-  | "stop"
-  | "trash"
-  | "cloud-offline"
-  | "trending-up"
-  | "resize"
-  | "cloud-download"
-  | "shield"
-  | "cog"
-  | "compass"
-  | "search"
-  | "location";
+import type { IconType } from "react-icons";
 
 /**
  * Pieces of the "default" UI a tool can opt-in to keep visible while it is
@@ -33,7 +15,7 @@ export type DefaultUiKey =
 export type ToolDefinition = {
   id: string;
   title: string;
-  icon: IconName;
+  icon: IconType;
   Provider?: ComponentType<{ children: ReactNode }>;
   MapChildren?: ComponentType;
   Overlay?: ComponentType;

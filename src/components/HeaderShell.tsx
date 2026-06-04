@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon } from "./Icon";
+import { PiX } from "react-icons/pi";
 
 interface HeaderShellProps {
   children: ReactNode;
@@ -50,7 +50,11 @@ export function HeaderShell({
           flexShrink: 0,
         }}
       >
-        <Icon name="close" size={20} color="#fff" />
+        <PiX
+          size={20}
+          color="#fff"
+          style={{ display: "block", flexShrink: 0 }}
+        />
       </button>
     </div>
   );

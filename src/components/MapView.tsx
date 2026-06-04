@@ -23,6 +23,7 @@ import {
 import { getOfflineTileTemplate, OFFLINE_LAYERS } from "../lib/offlineTiles";
 import { loadLastRegion, saveLastRegion } from "../lib/persistedRegion";
 import { usePointInfo } from "../lib/PointInfoContext";
+import { usePoi } from "../tools/poi/context";
 import {
   KARTVERKET_TOPO_TILES,
   STEEPNESS_RUNOUT_TILES,
@@ -30,6 +31,8 @@ import {
 import type { Region } from "../lib/types";
 import { useUiState } from "../lib/UiState";
 import { useOffline } from "../tools/offline/context";
+import { CustomPoiLayer } from "./CustomPoiLayer";
+import { PeakLayer } from "./PeakLayer";
 import { SavedRegionsOverlay } from "./SavedRegionsOverlay";
 import { PointInfoMapLayer } from "./PointInfoMapLayer";
 import { UserLocation } from "./UserLocation";
@@ -55,7 +58,12 @@ type MapViewProps = {
 export function MapView({ activeToolId, children }: MapViewProps) {
   const { mapRef, cursorCoordinate, regionListeners } = useMap();
   const { showSteepness, steepnessOpacity } = useUiState();
-  const { open: openPointInfo } = usePointInfo();
+  const {
+    open: openPointInfo,
+    close: closePointInfo,
+    point: pointInfoPoint,
+  } = usePointInfo();
+  const { selectedPoiId, selectPoi, setManagePanelOpen } = usePoi();
   const { offlineMode, savedRegions, polygon, downloading } = useOffline();
   const [mapReady, setMapReady] = useState(false);
 
@@ -89,6 +97,7 @@ export function MapView({ activeToolId, children }: MapViewProps) {
   }, []);
 
   // Long-press on the map opens the point-info sheet for the touched location.
+  // Short tap closes POI card and Point Info if either is open.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -100,6 +109,7 @@ export function MapView({ activeToolId, children }: MapViewProps) {
     let startX = 0;
     let startY = 0;
     let activePointerId: number | null = null;
+    let didMove = false;
 
     function clearTimer() {
       if (timer != null) {
@@ -114,6 +124,7 @@ export function MapView({ activeToolId, children }: MapViewProps) {
       activePointerId = e.pointerId;
       startX = e.clientX;
       startY = e.clientY;
+      didMove = false;
       clearTimer();
       timer = window.setTimeout(() => {
         timer = null;
@@ -123,6 +134,7 @@ export function MapView({ activeToolId, children }: MapViewProps) {
         const px = startX - rect.left;
         const py = startY - rect.top;
         const lngLat = m.unproject([px, py]);
+        selectPoi(null);
         openPointInfo({
           latitude: lngLat.lat,
           longitude: lngLat.lng,
@@ -136,6 +148,7 @@ export function MapView({ activeToolId, children }: MapViewProps) {
         Math.abs(e.clientX - startX) > MOVE_THRESHOLD_PX ||
         Math.abs(e.clientY - startY) > MOVE_THRESHOLD_PX
       ) {
+        didMove = true;
         clearTimer();
         activePointerId = null;
       }
@@ -143,8 +156,15 @@ export function MapView({ activeToolId, children }: MapViewProps) {
 
     function onPointerEnd(e: PointerEvent) {
       if (e.pointerId !== activePointerId) return;
+      const wasTap = timer != null && !didMove;
       clearTimer();
       activePointerId = null;
+      if (wasTap) {
+        // Short tap on the map — close open panels
+        closePointInfo();
+        selectPoi(null);
+        setManagePanelOpen(false);
+      }
     }
 
     canvas.addEventListener("pointerdown", onPointerDown);
@@ -166,7 +186,16 @@ export function MapView({ activeToolId, children }: MapViewProps) {
       map.off("movestart", clearTimer);
       map.off("zoomstart", clearTimer);
     };
-  }, [mapRef, mapReady, openPointInfo]);
+  }, [
+    mapRef,
+    mapReady,
+    openPointInfo,
+    closePointInfo,
+    selectPoi,
+    setManagePanelOpen,
+    pointInfoPoint,
+    selectedPoiId,
+  ]);
 
   const handleMapRef = useCallback(
     (instance: MapRef | null) => {
@@ -275,6 +304,8 @@ export function MapView({ activeToolId, children }: MapViewProps) {
         selectionPolygon={activeToolId === "offline" ? polygon : null}
       />
       <UserLocation />
+      <CustomPoiLayer />
+      <PeakLayer />
       <PointInfoMapLayer />
       {children}
     </Map>

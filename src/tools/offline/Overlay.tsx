@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "../../lib/MapContext";
-import { Icon } from "../../components/Icon";
+import {
+  PiCloudArrowDown,
+  PiPlus,
+  PiTrash,
+  PiX,
+  PiBackspace,
+  PiStop,
+  PiDownloadSimple,
+} from "react-icons/pi";
 import { ModalShell } from "../../components/ModalShell";
 import { RegionPreview } from "../../components/RegionPreview";
 import { useOffline } from "./context";
@@ -174,7 +182,11 @@ function ListView({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon name="cloud-download" size={16} color="#f97316" />
+            <PiCloudArrowDown
+              size={16}
+              color="#f97316"
+              style={{ display: "block", flexShrink: 0 }}
+            />
             <span
               style={{
                 color: "#f97316",
@@ -265,7 +277,11 @@ function ListView({
       />
 
       <button onClick={onNewRegion} style={primaryButton}>
-        <Icon name="add" size={18} color="#fff" />
+        <PiPlus
+          size={18}
+          color="#fff"
+          style={{ display: "block", flexShrink: 0 }}
+        />
         <span>New area</span>
       </button>
     </ModalShell>
@@ -381,7 +397,11 @@ function SavedRegionsList({
                 opacity: isRemoving ? 0.4 : 1,
               }}
             >
-              <Icon name="trash" size={16} color="#fff" />
+              <PiTrash
+                size={16}
+                color="#fff"
+                style={{ display: "block", flexShrink: 0 }}
+              />
               <span>Remove</span>
             </button>
           </div>
@@ -451,7 +471,11 @@ function CreateView({
         }}
       >
         <button aria-label="Back" onClick={onBack} style={iconButton}>
-          <Icon name="close" size={20} color="#fff" />
+          <PiX
+            size={20}
+            color="#fff"
+            style={{ display: "block", flexShrink: 0 }}
+          />
         </button>
         <div style={{ flex: 1, textAlign: "center" }}>
           <div
@@ -485,7 +509,11 @@ function CreateView({
             opacity: polygon.length === 0 || downloading ? 0.35 : 1,
           }}
         >
-          <Icon name="backspace" size={20} color="#fff" />
+          <PiBackspace
+            size={20}
+            color="#fff"
+            style={{ display: "block", flexShrink: 0 }}
+          />
         </button>
         <button
           aria-label="Clear"
@@ -496,7 +524,11 @@ function CreateView({
             opacity: polygon.length === 0 || downloading ? 0.35 : 1,
           }}
         >
-          <Icon name="trash" size={18} color="#fff" />
+          <PiTrash
+            size={18}
+            color="#fff"
+            style={{ display: "block", flexShrink: 0 }}
+          />
         </button>
       </div>
 
@@ -521,7 +553,11 @@ function CreateView({
             zIndex: 20,
           }}
         >
-          <Icon name="add" size={32} color="#fff" />
+          <PiPlus
+            size={32}
+            color="#fff"
+            style={{ display: "block", flexShrink: 0 }}
+          />
         </button>
       ) : null}
 
@@ -597,7 +633,11 @@ function CreateView({
             onClick={onCancelDownload}
             style={{ ...primaryButton, background: "#374151" }}
           >
-            <Icon name="stop" size={18} color="#fff" />
+            <PiStop
+              size={18}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
             <span>Stop download</span>
           </button>
         ) : (
@@ -610,7 +650,11 @@ function CreateView({
               opacity: canDownload ? 1 : 0.4,
             }}
           >
-            <Icon name="download" size={18} color="#fff" />
+            <PiDownloadSimple
+              size={18}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
             <span>Download</span>
           </button>
         )}

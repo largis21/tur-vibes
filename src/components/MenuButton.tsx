@@ -1,4 +1,4 @@
-import { Icon } from "./Icon";
+import { PiList } from "react-icons/pi";
 import { FabButton } from "./FabButton";
 import { useUiState } from "../lib/UiState";
 
@@ -6,7 +6,7 @@ export function MenuButton() {
   const { toggleSidebar } = useUiState();
   return (
     <FabButton aria-label="Open tools" onClick={toggleSidebar}>
-      <Icon name="menu" size={26} />
+      <PiList size={26} style={{ display: "block", flexShrink: 0 }} />
     </FabButton>
   );
 }

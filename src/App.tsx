@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 
 import { Crosshair } from "./components/Crosshair";
@@ -15,11 +22,15 @@ import {
 import { registerOfflineProtocols } from "./lib/offlineTiles";
 import { PermissionsProvider } from "./lib/permissions";
 import { loadLastRegion } from "./lib/persistedRegion";
+import { PeakProvider } from "./lib/PeakContext";
+import { PeakInfoModal } from "./components/PeakInfoModal";
+import { CustomPoiCard } from "./components/CustomPoiCard";
 import { PointInfoProvider } from "./lib/PointInfoContext";
 import type { LatLng } from "./lib/types";
 import { UiStateProvider, useUiState } from "./lib/UiState";
 import { useOffline } from "./tools/offline/context";
 import { getActiveTool, tools } from "./tools/registry";
+import { useNavigation } from "./tools/navigation/context";
 
 registerOfflineProtocols();
 
@@ -56,6 +67,21 @@ export default function App() {
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const deactivateTool = useCallback(() => setActiveToolId(null), []);
 
+  const [userPosition, setUserPosition] = useState<LatLng | null>(null);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) =>
+        setUserPosition({
+          latitude: p.coords.latitude,
+          longitude: p.coords.longitude,
+        }),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
   const mapContextValue = useMemo<MapContextValue>(
     () => ({
       mapRef,
@@ -63,8 +89,9 @@ export default function App() {
       regionListeners,
       subscribeRegionChange,
       deactivateTool,
+      userPosition,
     }),
-    [subscribeRegionChange, deactivateTool],
+    [subscribeRegionChange, deactivateTool, userPosition],
   );
 
   return (
@@ -72,12 +99,14 @@ export default function App() {
       <PermissionsProvider>
         <UiStateProvider>
           <PointInfoProvider>
-            <ToolProviders>
-              <AppContent
-                activeToolId={activeToolId}
-                setActiveToolId={setActiveToolId}
-              />
-            </ToolProviders>
+            <PeakProvider>
+              <ToolProviders>
+                <AppContent
+                  activeToolId={activeToolId}
+                  setActiveToolId={setActiveToolId}
+                />
+              </ToolProviders>
+            </PeakProvider>
           </PointInfoProvider>
         </UiStateProvider>
       </PermissionsProvider>
@@ -93,6 +122,7 @@ type AppContentProps = {
 function AppContent({ activeToolId, setActiveToolId }: AppContentProps) {
   const { sidebarOpen, closeSidebar } = useUiState();
   const { offlineMode } = useOffline();
+  const { tracking: navTracking } = useNavigation();
   const activeTool = getActiveTool(activeToolId);
   const isDefaultTool = activeToolId === null;
   const MapChildren = activeTool.MapChildren;
@@ -114,10 +144,20 @@ function AppContent({ activeToolId, setActiveToolId }: AppContentProps) {
       <DefaultUi
         keys={defaultUi}
         bannerVisible={isDefaultTool && offlineMode}
-        compassTopOffset={activeTool.id === "navigation" ? 88 : undefined}
+        compassTopOffset={
+          (activeTool.id === "navigation" && !navTracking) ||
+          activeTool.id === "poi"
+            ? 88
+            : undefined
+        }
+        onOpenPoiTool={
+          activeToolId !== "poi" ? () => setActiveToolId("poi") : undefined
+        }
       />
       {isDefaultTool && offlineMode ? <OfflineModeBanner /> : null}
       {Overlay ? <Overlay /> : null}
+      <PeakInfoModal />
+      <CustomPoiCard />
       <PointInfoModal />
       <Sidebar
         isOpen={sidebarOpen}

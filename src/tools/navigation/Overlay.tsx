@@ -1,5 +1,5 @@
 import { useMap } from "../../lib/MapContext";
-import { Icon } from "../../components/Icon";
+import { PiTrash, PiCrosshair, PiPlus, PiCompass } from "react-icons/pi";
 import { HeaderShell } from "../../components/HeaderShell";
 import { BearingCompass } from "./BearingCompass";
 import { BearingLabel } from "./BearingLabel";
@@ -170,7 +170,11 @@ export function NavigationOverlay() {
               opacity: bearings.length === 0 ? 0.35 : 1,
             }}
           >
-            <Icon name="trash" size={18} color="#fff" />
+            <PiTrash
+              size={18}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
           </button>
         </HeaderShell>
       )}
@@ -229,7 +233,11 @@ export function NavigationOverlay() {
               justifyContent: "center",
             }}
           >
-            <Icon name="trash" size={18} color="#fff" />
+            <PiTrash
+              size={18}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
           </button>
         </div>
       ) : null}
@@ -276,7 +284,11 @@ export function NavigationOverlay() {
               border: "2px solid transparent",
             }}
           >
-            <Icon name="locate" size={24} color="#9ca3af" />
+            <PiCrosshair
+              size={24}
+              color="#9ca3af"
+              style={{ display: "block", flexShrink: 0 }}
+            />
           </button>
           {/* Compass tracking toggle */}
           <button
@@ -295,10 +307,10 @@ export function NavigationOverlay() {
               border: tracking ? "2px solid #60a5fa" : "2px solid transparent",
             }}
           >
-            <Icon
-              name="compass"
+            <PiCompass
               size={26}
               color={tracking ? "#60a5fa" : "#9ca3af"}
+              style={{ display: "block", flexShrink: 0 }}
             />
           </button>
           {/* Add bearing */}
@@ -317,7 +329,11 @@ export function NavigationOverlay() {
               boxShadow: "0 3px 6px rgba(0,0,0,0.25)",
             }}
           >
-            <Icon name="add" size={32} color="#fff" />
+            <PiPlus
+              size={32}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
           </button>
         </div>
       ) : null}

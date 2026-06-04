@@ -62,9 +62,16 @@ export function PointInfoProvider({ children }: { children: ReactNode }) {
         if (!ctrl.signal.aborted) setLoading(false);
       });
     fetchNearestPlaceName(point, ctrl.signal)
-      .then((name) => {
+      .then((result) => {
         if (ctrl.signal.aborted) return;
-        setPlaceName(name);
+        if (!result) {
+          setPlaceName(null);
+          return;
+        }
+        const dist = result.distanceM;
+        const distStr =
+          dist < 1000 ? `${dist} m` : `${(dist / 1000).toFixed(1)} km`;
+        setPlaceName(`${result.name} (${result.type}, ${distStr})`);
       })
       .catch(() => {
         /* non-critical, ignore */

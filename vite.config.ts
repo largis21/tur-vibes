@@ -1,6 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { execSync } from "child_process";
 
 const COLORS: Record<string, string> = {
   log: "\x1b[37m",
@@ -10,6 +11,47 @@ const COLORS: Record<string, string> = {
   error: "\x1b[31m",
 };
 const RESET = "\x1b[0m";
+
+function getBuildInfo() {
+  try {
+    const gitRef = execSync("git rev-parse --short HEAD", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    const gitBranch = execSync("git rev-parse --abbrev-ref HEAD", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    return {
+      gitRef,
+      gitBranch,
+      buildDate: new Date().toISOString(),
+    };
+  } catch {
+    return {
+      gitRef: "unknown",
+      gitBranch: "unknown",
+      buildDate: new Date().toISOString(),
+    };
+  }
+}
+
+function buildInfoPlugin(): Plugin {
+  const buildInfo = getBuildInfo();
+  return {
+    name: "build-info",
+    config(config, env) {
+      if (!config.define) {
+        config.define = {};
+      }
+      config.define.__BUILD_INFO__ = JSON.stringify(buildInfo);
+    },
+  };
+}
 
 function remoteLogPlugin(): Plugin {
   return {
@@ -58,6 +100,7 @@ export default defineConfig({
   plugins: [
     react(),
     remoteLogPlugin(),
+    buildInfoPlugin(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["assets/**/*"],
