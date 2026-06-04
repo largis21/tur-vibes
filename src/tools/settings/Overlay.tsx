@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMap } from "../../lib/MapContext";
 import { Icon } from "../../components/Icon";
 import { ToggleSwitch } from "../../components/ToggleSwitch";
@@ -7,8 +7,17 @@ import { deleteOfflineDatabase } from "../../lib/offlineTiles";
 
 export function SettingsOverlay() {
   const { deactivateTool } = useMap();
-  const { location, orientation, setLocation, setOrientation } =
-    usePermissions();
+  const {
+    location,
+    orientation,
+    setLocation,
+    setOrientation,
+    refreshPermissions,
+  } = usePermissions();
+
+  useEffect(() => {
+    void refreshPermissions();
+  }, [refreshPermissions]);
   const [deleteState, setDeleteState] = useState<
     "idle" | "confirm" | "deleting" | "done"
   >("idle");
@@ -142,7 +151,8 @@ export function SettingsOverlay() {
           color={deleteState === "done" ? "#9ca3af" : "#fca5a5"}
         />
         {deleteState === "idle" && "Delete all data"}
-        {deleteState === "confirm" && "Tap again to confirm — this cannot be undone"}
+        {deleteState === "confirm" &&
+          "Tap again to confirm — this cannot be undone"}
         {deleteState === "deleting" && "Deleting…"}
         {deleteState === "done" && "All data deleted — reload the app"}
       </button>

@@ -28,7 +28,11 @@ type HapticPreset =
 export function haptic(preset: HapticPreset = "selection"): void {
   const h = getInstance();
   if (!h) return;
-  h.trigger(preset).catch(() => {
+
+  h.trigger(10);
+
+  h.trigger(preset).catch((err) => {
+    console.log("err", err);
     // Ignore — haptics are best-effort.
   });
 }

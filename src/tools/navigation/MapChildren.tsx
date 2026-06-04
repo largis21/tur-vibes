@@ -1,15 +1,42 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
+import type { MapMouseEvent } from "maplibre-gl";
 import { destinationPoint } from "../../lib/geoBearing";
+import { useMap } from "../../lib/MapContext";
 import { useNavigation } from "./context";
 
 /** Long enough to span the visible map at any reasonable zoom. */
 const PROJECTION_DISTANCE_METERS = 500_000;
 
 export function NavigationMapChildren() {
-  const { bearings, selectedBearingId, tracking, deviceHeading, userPosition } =
-    useNavigation();
+  const { mapRef } = useMap();
+  const {
+    bearings,
+    selectedBearingId,
+    selectBearing,
+    tracking,
+    deviceHeading,
+    userPosition,
+  } = useNavigation();
+
+  // Deselect bearing when the user clicks on the map outside a compass widget.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    function handleMapClick(e: MapMouseEvent) {
+      const features = map!.queryRenderedFeatures(e.point, {
+        layers: ["nav-bearing-points-fill"],
+      });
+      if (features.length === 0) {
+        selectBearing(null);
+      }
+    }
+    map.on("click", handleMapClick);
+    return () => {
+      map.off("click", handleMapClick);
+    };
+  }, [mapRef, selectBearing]);
 
   const lines = useMemo<FeatureCollection<LineString>>(() => {
     const features: Feature<LineString>[] = bearings.map((b) => {
@@ -70,11 +97,7 @@ export function NavigationMapChildren() {
   return (
     <>
       {trackingLine && (
-        <Source
-          id="nav-tracking-line"
-          type="geojson"
-          data={trackingLine}
-        >
+        <Source id="nav-tracking-line" type="geojson" data={trackingLine}>
           <Layer
             id="nav-tracking-line-layer"
             type="line"

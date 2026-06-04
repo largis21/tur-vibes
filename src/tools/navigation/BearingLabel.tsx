@@ -31,8 +31,7 @@ export function BearingLabel({ bearing }: { bearing: Bearing }) {
       ]);
       const mapBearing = map.getBearing();
       // Heading relative to screen (north = up when map bearing = 0).
-      const screenAngleRad =
-        ((bearing.heading - mapBearing) * Math.PI) / 180;
+      const screenAngleRad = ((bearing.heading - mapBearing) * Math.PI) / 180;
       const x = origin.x + Math.sin(screenAngleRad) * LABEL_OFFSET_PX;
       const y = origin.y - Math.cos(screenAngleRad) * LABEL_OFFSET_PX;
       el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
@@ -50,7 +49,12 @@ export function BearingLabel({ bearing }: { bearing: Bearing }) {
       map.off("zoom", sync);
       map.off("render", sync);
     };
-  }, [bearing.point.latitude, bearing.point.longitude, bearing.heading, mapRef]);
+  }, [
+    bearing.point.latitude,
+    bearing.point.longitude,
+    bearing.heading,
+    mapRef,
+  ]);
 
   return (
     <div

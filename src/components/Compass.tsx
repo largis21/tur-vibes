@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { haptic } from "../lib/haptics";
 import { useMap } from "../lib/MapContext";
 import { usePermissions } from "../lib/permissions";
 
 const NORTH_THRESHOLD_DEG = 1;
-const DOUBLE_TAP_MS = 350;
+const DOUBLE_TAP_MS = 200;
 
 type IOSOrientationEvent = DeviceOrientationEvent & {
   webkitCompassHeading?: number;
@@ -50,9 +49,6 @@ export function Compass({ topOffset = 16 }: { topOffset?: number } = {}) {
       setBearing(b);
       const signed = ((b + 540) % 360) - 180;
       const near = Math.abs(signed) < NORTH_THRESHOLD_DEG;
-      if (near && !wasNearNorth.current) {
-        haptic("selection");
-      }
       wasNearNorth.current = near;
     };
 
@@ -119,7 +115,6 @@ export function Compass({ topOffset = 16 }: { topOffset?: number } = {}) {
    */
   const beginOrientationListener = useCallback(() => {
     if (trackingRef.current) return;
-    haptic("medium");
     trackingRef.current = true;
     setTracking(true);
 
@@ -206,8 +201,7 @@ export function Compass({ topOffset = 16 }: { topOffset?: number } = {}) {
   function rotateToNorth() {
     const map = mapRef.current;
     if (!map) return;
-    haptic("light");
-    map.easeTo({ bearing: 0, duration: 350 });
+    map.rotateTo(0, { duration: 100 });
   }
 
   // --- Pointer handlers -----------------------------------------------------

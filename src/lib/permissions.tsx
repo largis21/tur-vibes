@@ -51,6 +51,8 @@ type PermissionsValue = PermissionsState & {
   setLocation: (granted: boolean) => Promise<void>;
   /** Toggle device-orientation permission. Setting to true triggers iOS's prompt. */
   setOrientation: (granted: boolean) => Promise<void>;
+  /** Re-query the browser Permissions API and update stored state. */
+  refreshPermissions: () => Promise<void>;
 };
 
 const PermissionsContext = createContext<PermissionsValue | null>(null);
@@ -109,9 +111,51 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshPermissions = useCallback(async () => {
+    console.log("1");
+    if (typeof navigator === "undefined" || !navigator.permissions) return;
+    console.log("2");
+    const queries: Promise<void>[] = [];
+    queries.push(
+      navigator.permissions
+        .query({ name: "geolocation" as PermissionName })
+        .then((geo) => {
+          setState((s) => ({
+            ...s,
+            location:
+              geo.state === "granted"
+                ? "granted"
+                : geo.state === "denied"
+                  ? "denied"
+                  : s.location,
+          }));
+        })
+        .catch(() => {}),
+    );
+    queries.push(
+      navigator.permissions
+        .query({ name: "gyroscope" as PermissionName })
+        .then((gyro) => {
+          setState((s) => ({
+            ...s,
+            orientation:
+              gyro.state === "granted"
+                ? "granted"
+                : gyro.state === "denied"
+                  ? "denied"
+                  : s.orientation,
+          }));
+        })
+        .catch((err) => {
+          console.log("ERR", err);
+        }),
+    );
+    await Promise.all(queries);
+  }, []);
+
   const value = useMemo<PermissionsValue>(
-    () => ({ ...state, setLocation, setOrientation }),
-    [state, setLocation, setOrientation],
+    () => ({ ...state, setLocation, setOrientation, refreshPermissions }),
+    [state, setLocation, setOrientation, refreshPermissions],
   );
 
   return (
