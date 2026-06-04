@@ -14,7 +14,16 @@ function compassFromBearing(deg: number): string {
 }
 
 export function PointInfoModal() {
-  const { point, info, placeName, loading, error, close } = usePointInfo();
+  const {
+    point,
+    info,
+    placeName,
+    loading,
+    error,
+    close,
+    toggleAspectArrow,
+    showAspectArrow,
+  } = usePointInfo();
   const { addPoi } = usePoi();
   const [saving, setSaving] = useState(false);
 
@@ -71,6 +80,9 @@ export function PointInfoModal() {
                 ? `${compassFromBearing(info.aspectDeg)} (${Math.round(info.aspectDeg)}°)`
                 : "–"
           }
+          onClick={toggleAspectArrow}
+          isClickable={info?.aspectDeg != null && !loading}
+          isActive={showAspectArrow}
         />
       </div>
 
@@ -119,9 +131,44 @@ export function PointInfoModal() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  onClick,
+  isClickable,
+  isActive,
+}: {
+  label: string;
+  value: string;
+  onClick?: () => void;
+  isClickable?: boolean;
+  isActive?: boolean;
+}) {
   return (
-    <div>
+    <div
+      onClick={isClickable ? onClick : undefined}
+      style={{
+        cursor: isClickable ? "pointer" : "default",
+        padding: isClickable ? "8px 10px" : "0",
+        borderRadius: isClickable ? "8px" : "0",
+        backgroundColor: isActive
+          ? "rgba(59,130,246,0.25)"
+          : isClickable
+            ? "rgba(59,130,246,0.08)"
+            : "transparent",
+        transition: isClickable ? "all 0.15s" : "none",
+      }}
+      onMouseEnter={(e) => {
+        if (isClickable && !isActive) {
+          e.currentTarget.style.backgroundColor = "rgba(59,130,246,0.15)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (isClickable && !isActive) {
+          e.currentTarget.style.backgroundColor = "rgba(59,130,246,0.08)";
+        }
+      }}
+    >
       <div
         style={{
           color: "#9ca3af",

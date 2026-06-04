@@ -7,7 +7,7 @@ import { useMap } from "../lib/MapContext";
 import { usePointInfo } from "../lib/PointInfoContext";
 
 export function PointInfoMapLayer() {
-  const { point, info } = usePointInfo();
+  const { point, info, showAspectArrow } = usePointInfo();
   const { mapRef } = useMap();
   const [zoom, setZoom] = useState<number>(
     () => mapRef.current?.getZoom() ?? 12,
@@ -45,6 +45,7 @@ export function PointInfoMapLayer() {
     line: FeatureCollection<LineString>;
   } | null>(() => {
     if (!point) return null;
+    if (!showAspectArrow) return null;
     if (info?.aspectDeg == null || info.slopeDeg == null) return null;
     const mpp = metersPerPixel(point.latitude, zoom);
     const length = 10 * mpp;
@@ -81,7 +82,7 @@ export function PointInfoMapLayer() {
     return {
       line: { type: "FeatureCollection", features: [shaft, head] },
     };
-  }, [point, info, zoom]);
+  }, [point, info, showAspectArrow, zoom]);
 
   if (!markerData) return null;
 

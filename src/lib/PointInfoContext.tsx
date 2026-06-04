@@ -22,6 +22,8 @@ type PointInfoContextValue = {
   error: string | null;
   open: (p: LatLng) => void;
   close: () => void;
+  showAspectArrow: boolean;
+  toggleAspectArrow: () => void;
 };
 
 const PointInfoContext = createContext<PointInfoContextValue | null>(null);
@@ -32,9 +34,14 @@ export function PointInfoProvider({ children }: { children: ReactNode }) {
   const [placeName, setPlaceName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAspectArrow, setShowAspectArrow] = useState(false);
 
   const open = useCallback((p: LatLng) => setPoint(p), []);
   const close = useCallback(() => setPoint(null), []);
+  const toggleAspectArrow = useCallback(
+    () => setShowAspectArrow((prev) => !prev),
+    [],
+  );
 
   useEffect(() => {
     if (!point) {
@@ -42,6 +49,7 @@ export function PointInfoProvider({ children }: { children: ReactNode }) {
       setPlaceName(null);
       setError(null);
       setLoading(false);
+      setShowAspectArrow(false);
       return;
     }
     const ctrl = new AbortController();
@@ -80,8 +88,18 @@ export function PointInfoProvider({ children }: { children: ReactNode }) {
   }, [point]);
 
   const value = useMemo(
-    () => ({ point, info, placeName, loading, error, open, close }),
-    [point, info, placeName, loading, error],
+    () => ({
+      point,
+      info,
+      placeName,
+      loading,
+      error,
+      open,
+      close,
+      showAspectArrow,
+      toggleAspectArrow,
+    }),
+    [point, info, placeName, loading, error, showAspectArrow],
   );
 
   return (
