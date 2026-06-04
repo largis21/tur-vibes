@@ -1,34 +1,12 @@
 import maplibregl from "maplibre-gl";
-import { KARTVERKET_TOPO_TILES, STEEPNESS_RUNOUT_TILES } from "./tileCache";
+import { MAP_SOURCES, getMapSource, tileMatchesBounds } from "./mapSources";
 import type { LatLng } from "./types";
 
-export type OfflineLayerId = "topo" | "steepness";
-
-type LayerConfig = {
-  id: OfflineLayerId;
-  url: string;
-  protocol: string;
-  maxZoom: number;
-};
-
-export const OFFLINE_LAYERS: Record<OfflineLayerId, LayerConfig> = {
-  topo: {
-    id: "topo",
-    url: KARTVERKET_TOPO_TILES,
-    protocol: "offline-topo",
-    maxZoom: 18,
-  },
-  steepness: {
-    id: "steepness",
-    url: STEEPNESS_RUNOUT_TILES,
-    protocol: "offline-steepness",
-    maxZoom: 16,
-  },
-};
-
 /** Tile URL template MapLibre will request when in offline mode. */
-export function getOfflineTileTemplate(layer: OfflineLayerId): string {
-  return `${OFFLINE_LAYERS[layer].protocol}://{z}/{x}/{y}`;
+export function getOfflineTileTemplate(sourceId: string): string {
+  const source = getMapSource(sourceId);
+  if (!source) throw new Error(`Unknown source: ${sourceId}`);
+  return `${source.offline.protocol}://{z}/{x}/{y}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,12 +35,12 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-function tileKey(layer: OfflineLayerId, z: number, x: number, y: number) {
-  return `${layer}/${z}/${x}/${y}`;
+function tileKey(sourceId: string, z: number, x: number, y: number) {
+  return `${sourceId}/${z}/${x}/${y}`;
 }
 
 async function putTile(
-  layer: OfflineLayerId,
+  sourceId: string,
   z: number,
   x: number,
   y: number,
@@ -71,14 +49,14 @@ async function putTile(
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(buf, tileKey(layer, z, x, y));
+    tx.objectStore(STORE).put(buf, tileKey(sourceId, z, x, y));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
 async function getTile(
-  layer: OfflineLayerId,
+  sourceId: string,
   z: number,
   x: number,
   y: number,
@@ -86,7 +64,7 @@ async function getTile(
   const db = await openDb();
   return new Promise<ArrayBuffer | null>((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
-    const req = tx.objectStore(STORE).get(tileKey(layer, z, x, y));
+    const req = tx.objectStore(STORE).get(tileKey(sourceId, z, x, y));
     req.onsuccess = () => resolve((req.result as ArrayBuffer) ?? null);
     req.onerror = () => reject(req.error);
   });
@@ -95,7 +73,7 @@ async function getTile(
 export { getTile as getOfflineTile };
 
 async function deleteTile(
-  layer: OfflineLayerId,
+  sourceId: string,
   z: number,
   x: number,
   y: number,
@@ -103,7 +81,7 @@ async function deleteTile(
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(tileKey(layer, z, x, y));
+    tx.objectStore(STORE).delete(tileKey(sourceId, z, x, y));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -129,15 +107,16 @@ async function listKeysByPrefix(prefix: string): Promise<string[]> {
 // ---------------------------------------------------------------------------
 
 export function registerOfflineProtocols() {
-  for (const cfg of Object.values(OFFLINE_LAYERS)) {
-    maplibregl.addProtocol(cfg.protocol, async (params) => {
+  for (const source of MAP_SOURCES) {
+    const protocol = source.offline.protocol;
+    maplibregl.addProtocol(protocol, async (params) => {
       const url = new URL(params.url);
       // protocol://z/x/y → host=z, pathname=/x/y
       const z = Number(url.host);
       const [, xStr, yStr] = url.pathname.split("/");
       const x = Number(xStr);
       const y = Number(yStr);
-      const buf = await getTile(cfg.id, z, x, y);
+      const buf = await getTile(source.id, z, x, y);
       if (!buf) {
         throw new Error("Tile not in offline cache");
       }
@@ -172,7 +151,7 @@ function tileYToLat(y: number, z: number): number {
 }
 
 export type TileCoord = {
-  layer: OfflineLayerId;
+  sourceId: string;
   z: number;
   x: number;
   y: number;
@@ -351,19 +330,23 @@ export function polygonOverlapsBounds(
 export function listTilesForPolygon(
   polygon: OfflineRegionPolygon,
   minZoom: number,
-  maxZoomByLayer: Partial<Record<OfflineLayerId, number>>,
-  layers: OfflineLayerId[],
+  maxZoomBySource: Partial<Record<string, number>>,
+  sourceIds: string[],
 ): TileCoord[] {
   const tiles: TileCoord[] = [];
   if (polygon.length < 3) return tiles;
   const bbox = polygonBBox(polygon);
-  for (const layer of layers) {
-    const cfg = OFFLINE_LAYERS[layer];
-    const layerMaxZoom = Math.min(
-      maxZoomByLayer[layer] ?? cfg.maxZoom,
-      cfg.maxZoom,
+
+  for (const sourceId of sourceIds) {
+    const source = getMapSource(sourceId);
+    if (!source) continue;
+
+    const sourceMaxZoom = Math.min(
+      maxZoomBySource[sourceId] ?? source.offline.maxZoom,
+      source.offline.maxZoom,
     );
-    for (let z = minZoom; z <= layerMaxZoom; z += 1) {
+
+    for (let z = minZoom; z <= sourceMaxZoom; z += 1) {
       const max = Math.pow(2, z) - 1;
       const xMinF = lonToTileXFloat(bbox.minLon, z);
       const xMaxF = lonToTileXFloat(bbox.maxLon, z);
@@ -373,8 +356,12 @@ export function listTilesForPolygon(
       const xMax = Math.min(max, Math.floor(xMaxF));
       const yMin = Math.max(0, Math.floor(yMinF));
       const yMax = Math.min(max, Math.floor(yMaxF));
+
       for (let x = xMin; x <= xMax; x += 1) {
         for (let y = yMin; y <= yMax; y += 1) {
+          // Skip tiles outside source bounds.
+          if (!tileMatchesBounds(source, z, x, y)) continue;
+
           const tileRect: OfflineRegionBounds = {
             minLon: tileXToLon(x, z),
             maxLon: tileXToLon(x + 1, z),
@@ -382,17 +369,20 @@ export function listTilesForPolygon(
             minLat: tileYToLat(y + 1, z),
           };
           if (polygonOverlapsRect(polygon, tileRect)) {
-            tiles.push({ layer, z, x, y });
+            tiles.push({ sourceId, z, x, y });
           }
         }
       }
     }
   }
+
   return tiles;
 }
 
 function tileUrl(coord: TileCoord) {
-  return OFFLINE_LAYERS[coord.layer].url
+  const source = getMapSource(coord.sourceId);
+  if (!source) throw new Error(`Unknown source: ${coord.sourceId}`);
+  return source.online.urlTemplate
     .replace("{z}", String(coord.z))
     .replace("{x}", String(coord.x))
     .replace("{y}", String(coord.y));
@@ -432,7 +422,7 @@ export function downloadOfflineTiles(
           const res = await fetch(tileUrl(tile), { cache: "no-store" });
           if (!res.ok) throw new Error(`status ${res.status}`);
           const buf = await res.arrayBuffer();
-          await putTile(tile.layer, tile.z, tile.x, tile.y, buf);
+          await putTile(tile.sourceId, tile.z, tile.x, tile.y, buf);
           completed += 1;
         } catch {
           failed += 1;
@@ -495,19 +485,25 @@ export async function deleteOfflineDatabase(): Promise<void> {
 export async function clearTilesInPolygon(
   polygon: OfflineRegionPolygon,
   minZoom: number,
-  maxZoomByLayer: Partial<Record<OfflineLayerId, number>>,
+  maxZoomBySource: Partial<Record<string, number>>,
+  sourceIds: string[],
 ): Promise<number> {
   if (polygon.length < 3) return 0;
   const bbox = polygonBBox(polygon);
   let deleted = 0;
-  for (const layer of Object.keys(OFFLINE_LAYERS) as OfflineLayerId[]) {
-    const cfg = OFFLINE_LAYERS[layer];
-    const layerMaxZoom = Math.min(
-      maxZoomByLayer[layer] ?? cfg.maxZoom,
-      cfg.maxZoom,
+
+  for (const sourceId of sourceIds) {
+    const source = getMapSource(sourceId);
+    if (!source) continue;
+
+    const sourceMaxZoom = Math.min(
+      maxZoomBySource[sourceId] ?? source.offline.maxZoom,
+      source.offline.maxZoom,
     );
-    const allKeys = await listKeysByPrefix(`${layer}/`);
-    for (let z = minZoom; z <= layerMaxZoom; z += 1) {
+
+    const allKeys = await listKeysByPrefix(`${sourceId}/`);
+
+    for (let z = minZoom; z <= sourceMaxZoom; z += 1) {
       const max = Math.pow(2, z) - 1;
       const xMinF = lonToTileXFloat(bbox.minLon, z);
       const xMaxF = lonToTileXFloat(bbox.maxLon, z);
@@ -517,13 +513,15 @@ export async function clearTilesInPolygon(
       const xMax = Math.min(max, Math.floor(xMaxF));
       const yMin = Math.max(0, Math.floor(yMinF));
       const yMax = Math.min(max, Math.floor(yMaxF));
-      const prefix = `${layer}/${z}/`;
+
+      const prefix = `${sourceId}/${z}/`;
       for (const key of allKeys) {
         if (!key.startsWith(prefix)) continue;
         const parts = key.split("/");
         const x = Number(parts[2]);
         const y = Number(parts[3]);
         if (x < xMin || x > xMax || y < yMin || y > yMax) continue;
+
         const tileRect: OfflineRegionBounds = {
           minLon: tileXToLon(x, z),
           maxLon: tileXToLon(x + 1, z),
@@ -531,43 +529,48 @@ export async function clearTilesInPolygon(
           minLat: tileYToLat(y + 1, z),
         };
         if (!polygonOverlapsRect(polygon, tileRect)) continue;
-        await deleteTile(layer, z, x, y);
+
+        await deleteTile(sourceId, z, x, y);
         deleted += 1;
       }
     }
   }
+
   return deleted;
 }
 
 export async function getTilesSizeInPolygon(
   polygon: OfflineRegionPolygon,
   minZoom: number,
-  maxZoomByLayer: Partial<Record<OfflineLayerId, number>>,
+  maxZoomBySource: Partial<Record<string, number>>,
+  sourceIds: string[],
 ): Promise<number> {
   if (polygon.length < 3) return 0;
   const bbox = polygonBBox(polygon);
 
-  /** Per-layer per-zoom xy bbox ranges. Tiles outside this bbox are skipped fast. */
+  /** Per-source per-zoom xy bbox ranges. Tiles outside this bbox are skipped fast. */
   const ranges: Record<
-    OfflineLayerId,
+    string,
     Map<number, { xMin: number; xMax: number; yMin: number; yMax: number }>
-  > = {
-    topo: new Map(),
-    steepness: new Map(),
-  };
-  for (const layer of Object.keys(OFFLINE_LAYERS) as OfflineLayerId[]) {
-    const cfg = OFFLINE_LAYERS[layer];
-    const layerMaxZoom = Math.min(
-      maxZoomByLayer[layer] ?? cfg.maxZoom,
-      cfg.maxZoom,
+  > = {};
+
+  for (const sourceId of sourceIds) {
+    const source = getMapSource(sourceId);
+    if (!source) continue;
+
+    const sourceMaxZoom = Math.min(
+      maxZoomBySource[sourceId] ?? source.offline.maxZoom,
+      source.offline.maxZoom,
     );
-    for (let z = minZoom; z <= layerMaxZoom; z += 1) {
+
+    ranges[sourceId] = new Map();
+    for (let z = minZoom; z <= sourceMaxZoom; z += 1) {
       const max = Math.pow(2, z) - 1;
       const xMinF = lonToTileXFloat(bbox.minLon, z);
       const xMaxF = lonToTileXFloat(bbox.maxLon, z);
       const yMinF = latToTileYFloat(bbox.maxLat, z);
       const yMaxF = latToTileYFloat(bbox.minLat, z);
-      ranges[layer].set(z, {
+      ranges[sourceId].set(z, {
         xMin: Math.max(0, Math.floor(xMinF)),
         xMax: Math.min(max, Math.floor(xMaxF)),
         yMin: Math.max(0, Math.floor(yMinF)),
@@ -592,11 +595,11 @@ export async function getTilesSizeInPolygon(
       const key = String(cursor.key);
       const parts = key.split("/");
       if (parts.length === 4) {
-        const layer = parts[0] as OfflineLayerId;
+        const sourceId = parts[0];
         const z = Number(parts[1]);
         const x = Number(parts[2]);
         const y = Number(parts[3]);
-        const range = ranges[layer]?.get(z);
+        const range = ranges[sourceId]?.get(z);
         if (
           range &&
           x >= range.xMin &&

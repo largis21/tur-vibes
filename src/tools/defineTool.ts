@@ -12,6 +12,30 @@ export type DefaultUiKey =
   | "locateButton"
   | "menuButton";
 
+/**
+ * Icon names used in the icon registry.
+ */
+export type IconName =
+  | "close"
+  | "menu"
+  | "add"
+  | "backspace"
+  | "locate"
+  | "download"
+  | "stop"
+  | "trash"
+  | "cloud-offline"
+  | "trending-up"
+  | "resize"
+  | "cloud-download"
+  | "shield"
+  | "cog"
+  | "compass"
+  | "search"
+  | "location"
+  | "filter"
+  | "sort";
+
 export type ToolDefinition = {
   id: string;
   title: string;

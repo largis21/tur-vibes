@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2016",
     "useDefineForClassFields": true,
-    "lib": ["ES2016", "DOM", "DOM.Iterable"],
+    "lib": ["ES2018", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",

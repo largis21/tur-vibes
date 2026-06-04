@@ -11,7 +11,7 @@ import type { Region } from "../lib/types";
 export const CUSTOM_POI_CIRCLE_LAYER = "custom-pois-circle";
 
 function poisInView(
-  pois: { id: string; name: string; lat: number; lng: number }[],
+  pois: CustomPoi[],
   region: Region,
 ) {
   const minLat = region.latitude - region.latitudeDelta / 2;

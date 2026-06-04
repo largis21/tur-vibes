@@ -3,6 +3,8 @@ import type { Region } from "./types";
 
 export const BLANK_STYLE: StyleSpecification = {
   version: 8,
+  glyphs:
+    "https://cdn.jsdelivr.net/npm/@mapbox/fonts@v1.0.0/{fontstack}/{range}.pbf",
   sources: {},
   layers: [
     {

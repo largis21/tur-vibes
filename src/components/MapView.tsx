@@ -20,14 +20,11 @@ import {
   regionFromMap,
   zoomFromLongitudeDelta,
 } from "../lib/mapHelpers";
-import { getOfflineTileTemplate, OFFLINE_LAYERS } from "../lib/offlineTiles";
+import { getOfflineTileTemplate } from "../lib/offlineTiles";
 import { loadLastRegion, saveLastRegion } from "../lib/persistedRegion";
 import { usePointInfo } from "../lib/PointInfoContext";
 import { usePoi } from "../tools/poi/context";
-import {
-  KARTVERKET_TOPO_TILES,
-  STEEPNESS_RUNOUT_TILES,
-} from "../lib/tileCache";
+import { getMapSource, basemaps } from "../lib/mapSources";
 import type { Region } from "../lib/types";
 import { useUiState } from "../lib/UiState";
 import { useOffline } from "../tools/offline/context";
@@ -43,10 +40,6 @@ const DEFAULT_REGION: Region = {
   latitudeDelta: 0.2,
   longitudeDelta: 0.2,
 };
-
-// Cap zoom for offline topo to what the downloader stores by default.
-// Online mode allows the full topo zoom range.
-const OFFLINE_TOPO_MAX_ZOOM = 16;
 
 const INITIAL_REGION: Region = loadLastRegion() ?? DEFAULT_REGION;
 
@@ -233,69 +226,103 @@ export function MapView({ activeToolId, children }: MapViewProps) {
       style={{ position: "absolute", inset: 0 }}
     >
       {!offlineMode ? (
-        <Source
-          id="topo-online"
-          type="raster"
-          tiles={[KARTVERKET_TOPO_TILES]}
-          tileSize={256}
-          maxzoom={OFFLINE_LAYERS.topo.maxZoom}
-        >
-          <Layer
-            id="topo-online-layer"
-            type="raster"
-            paint={{ "raster-opacity": 1 }}
-          />
-        </Source>
-      ) : null}
+        <>
+          {/* Render all basemaps (topo, npolars-svalbard, npolars-janmayen, etc.) */}
+          {basemaps().map((src) => (
+            <Source
+              key={`${src.id}-online`}
+              id={`${src.id}-online`}
+              type="raster"
+              tiles={[src.online.urlTemplate]}
+              tileSize={src.online.tileSize}
+              {...(src.bounds && {
+                bounds: [
+                  src.bounds.minLon,
+                  src.bounds.minLat,
+                  src.bounds.maxLon,
+                  src.bounds.maxLat,
+                ],
+              })}
+              maxzoom={src.maxZoom}
+            >
+              <Layer
+                id={`${src.id}-online-layer`}
+                type="raster"
+                paint={{ "raster-opacity": 1 }}
+              />
+            </Source>
+          ))}
 
-      {!offlineMode ? (
-        <Source
-          id="steepness-online"
-          type="raster"
-          tiles={[STEEPNESS_RUNOUT_TILES]}
-          tileSize={256}
-          maxzoom={OFFLINE_LAYERS.steepness.maxZoom}
-        >
-          <Layer
-            id="steepness-online-layer"
-            type="raster"
-            paint={{ "raster-opacity": showSteepness ? steepnessOpacity : 0 }}
-          />
-        </Source>
+          {/* Render overlay sources (steepness) */}
+          {showSteepness &&
+            (() => {
+              const steepnessSrc = getMapSource("steepness");
+              if (!steepnessSrc) return null;
+              return (
+                <Source
+                  id="steepness-online"
+                  type="raster"
+                  tiles={[steepnessSrc.online.urlTemplate]}
+                  tileSize={steepnessSrc.online.tileSize}
+                  maxzoom={steepnessSrc.maxZoom}
+                >
+                  <Layer
+                    id="steepness-online-layer"
+                    type="raster"
+                    paint={{
+                      "raster-opacity": steepnessOpacity,
+                    }}
+                  />
+                </Source>
+              );
+            })()}
+        </>
       ) : null}
 
       {offlineMode ? (
-        <Source
-          key={`topo-offline-${tilesVersion}`}
-          id="topo-offline"
-          type="raster"
-          tiles={[getOfflineTileTemplate("topo")]}
-          tileSize={256}
-          maxzoom={OFFLINE_TOPO_MAX_ZOOM}
-        >
-          <Layer
-            id="topo-offline-layer"
-            type="raster"
-            paint={{ "raster-opacity": 1 }}
-          />
-        </Source>
-      ) : null}
+        <>
+          {/* Render all basemaps in offline mode */}
+          {basemaps().map((src) => (
+            <Source
+              key={`${src.id}-offline-${tilesVersion}`}
+              id={`${src.id}-offline`}
+              type="raster"
+              tiles={[getOfflineTileTemplate(src.id)]}
+              tileSize={src.online.tileSize}
+              maxzoom={src.offline.maxZoom}
+            >
+              <Layer
+                id={`${src.id}-offline-layer`}
+                type="raster"
+                paint={{ "raster-opacity": 1 }}
+              />
+            </Source>
+          ))}
 
-      {offlineMode && showSteepness ? (
-        <Source
-          key={`steepness-offline-${tilesVersion}`}
-          id="steepness-offline"
-          type="raster"
-          tiles={[getOfflineTileTemplate("steepness")]}
-          tileSize={256}
-          maxzoom={OFFLINE_LAYERS.steepness.maxZoom}
-        >
-          <Layer
-            id="steepness-offline-layer"
-            type="raster"
-            paint={{ "raster-opacity": steepnessOpacity }}
-          />
-        </Source>
+          {/* Render overlay sources (steepness) in offline mode if enabled */}
+          {showSteepness
+            ? (() => {
+                const steepnessSrc = getMapSource("steepness");
+                if (!steepnessSrc) return null;
+                return (
+                  <Source
+                    key={`steepness-offline-${tilesVersion}`}
+                    id="steepness-offline"
+                    type="raster"
+                    tiles={[getOfflineTileTemplate("steepness")]}
+                    tileSize={steepnessSrc.online.tileSize}
+                    maxzoom={steepnessSrc.offline.maxZoom}
+                  >
+                    <Layer
+                      id="steepness-offline-layer"
+                      type="raster"
+                      paint={{ "raster-opacity": steepnessOpacity }}
+                    />
+                  </Source>
+                );
+              })()
+            : null}
+        </>
       ) : null}
 
       <SavedRegionsOverlay

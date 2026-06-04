@@ -5,6 +5,9 @@ export type SavedOfflineRegion = {
   id: string;
   polygon: LatLng[];
   createdAt: number;
+  /** Which source IDs (e.g. "topo", "steepness", "npolars-svalbard") have cached tiles for this region.
+   *  Defaults to ["topo", "steepness"] for backwards compatibility with legacy saved regions. */
+  sourceIds: string[];
 };
 
 type LegacyBounds = {
@@ -49,34 +52,46 @@ function normalize(value: unknown): SavedOfflineRegion | null {
   if (!value || typeof value !== "object") return null;
   const r = value as Record<string, unknown>;
   if (typeof r.id !== "string") return null;
-  const createdAt =
-    typeof r.createdAt === "number" ? r.createdAt : Date.now();
+  const createdAt = typeof r.createdAt === "number" ? r.createdAt : Date.now();
+
+  let polygon: LatLng[] | null = null;
   if (isPolygon(r.polygon)) {
-    return { id: r.id, polygon: r.polygon, createdAt };
+    polygon = r.polygon;
+  } else if (isLegacyBounds(r.bounds)) {
+    polygon = boundsToPolygon(r.bounds);
   }
-  if (isLegacyBounds(r.bounds)) {
-    return { id: r.id, polygon: boundsToPolygon(r.bounds), createdAt };
-  }
-  return null;
+
+  if (!polygon) return null;
+
+  // Backwards compatibility: if sourceIds is missing, default to ["topo", "steepness"]
+  const sourceIds = Array.isArray(r.sourceIds)
+    ? (r.sourceIds as unknown[]).every((id) => typeof id === "string")
+      ? (r.sourceIds as string[])
+      : ["topo", "steepness"]
+    : ["topo", "steepness"];
+
+  return { id: r.id, polygon, createdAt, sourceIds };
 }
 
 export function loadSavedRegions(): SavedOfflineRegion[] {
   const raw = safeGetJSON<unknown>(STORAGE_KEYS.savedRegions, []);
   if (!Array.isArray(raw)) return [];
-  return raw
-    .map(normalize)
-    .filter((r): r is SavedOfflineRegion => r !== null);
+  return raw.map(normalize).filter((r): r is SavedOfflineRegion => r !== null);
 }
 
 function writeRegions(regions: SavedOfflineRegion[]) {
   safeSetJSON(STORAGE_KEYS.savedRegions, regions);
 }
 
-export function addSavedRegion(polygon: LatLng[]): SavedOfflineRegion {
+export function addSavedRegion(
+  polygon: LatLng[],
+  sourceIds: string[] = ["topo", "steepness"],
+): SavedOfflineRegion {
   const region: SavedOfflineRegion = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     polygon,
     createdAt: Date.now(),
+    sourceIds,
   };
   const regions = [...loadSavedRegions(), region];
   writeRegions(regions);

@@ -26,12 +26,15 @@ import {
   removeSavedRegions,
   type SavedOfflineRegion,
 } from "../../lib/savedRegions";
+import { sourcesIntersecting } from "../../lib/mapSources";
 import type { LatLng } from "../../lib/types";
 
 const DEFAULT_MIN_ZOOM = 11;
-const DEFAULT_MAX_ZOOM_BY_LAYER = {
+const DEFAULT_MAX_ZOOM_BY_SOURCE = {
   topo: 16,
   steepness: 15,
+  "npolars-svalbard": 16,
+  "npolars-janmayen": 15,
 } as const;
 
 export type OfflineContextValue = {
@@ -101,7 +104,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         next[region.id] = await getTilesSizeInPolygon(
           region.polygon,
           DEFAULT_MIN_ZOOM,
-          DEFAULT_MAX_ZOOM_BY_LAYER,
+          DEFAULT_MAX_ZOOM_BY_SOURCE,
+          region.sourceIds,
         );
       }
       if (!cancelled) setRegionSizes(next);
@@ -116,16 +120,26 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     [polygon],
   );
 
+  /**
+   * Which sources' bounds intersect this polygon.
+   * For basemaps, only includes those with geographic coverage over the polygon.
+   * For overlays like steepness, includes all applicable overlays.
+   */
+  const applicableSourceIds = useMemo(() => {
+    if (polygon.length < 3) return [];
+    return sourcesIntersecting(polygon).map((s) => s.id);
+  }, [polygon]);
+
   const tiles = useMemo(() => {
     if (polygon.length < 3) return [];
     if (selfIntersecting) return [];
     return listTilesForPolygon(
       polygon,
       DEFAULT_MIN_ZOOM,
-      DEFAULT_MAX_ZOOM_BY_LAYER,
-      ["topo", "steepness"],
+      DEFAULT_MAX_ZOOM_BY_SOURCE,
+      applicableSourceIds,
     );
-  }, [polygon, selfIntersecting]);
+  }, [polygon, selfIntersecting, applicableSourceIds]);
 
   const addPolygonPoint = useCallback(() => {
     setPolygon((cur) => [...cur, { ...cursorCoordinate.current }]);
@@ -157,6 +171,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     )
       return;
     const snapshot = polygon.slice();
+    const sourceSnapshot = applicableSourceIds.slice();
     setDownloading(true);
     setProgress({ total: tiles.length, completed: 0, failed: 0 });
     const handle = downloadOfflineTiles(tiles, (p) => setProgress(p));
@@ -164,7 +179,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     handle.promise
       .then(async (result) => {
         if (result.completed > 0) {
-          const saved = addSavedRegion(snapshot);
+          const saved = addSavedRegion(snapshot, sourceSnapshot);
           setSavedRegions((prev) => [...prev, saved]);
           setPolygon([]);
         }
@@ -174,7 +189,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         handleRef.current = null;
         setStorageBytes(await getOfflineTilesSize());
       });
-  }, [downloading, tiles, polygon, selfIntersecting]);
+  }, [downloading, tiles, polygon, selfIntersecting, applicableSourceIds]);
 
   const cancelDownload = useCallback(() => {
     handleRef.current?.cancel();
@@ -187,7 +202,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       await clearTilesInPolygon(
         target.polygon,
         DEFAULT_MIN_ZOOM,
-        DEFAULT_MAX_ZOOM_BY_LAYER,
+        DEFAULT_MAX_ZOOM_BY_SOURCE,
+        target.sourceIds,
       );
       const remaining = removeSavedRegions(new Set([id]));
       setSavedRegions(remaining);
