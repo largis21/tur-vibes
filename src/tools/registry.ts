@@ -5,6 +5,7 @@ import { navigationTool } from "./navigation";
 import { offlineTool } from "./offline";
 import { poiTool } from "./poi";
 import { settingsTool } from "./settings";
+import { listsTool } from "./lists";
 
 /** Tools shown in the sidebar. The default tool is intentionally omitted. */
 export const tools: ToolDefinition[] = [
@@ -12,6 +13,7 @@ export const tools: ToolDefinition[] = [
   measureTool,
   poiTool,
   offlineTool,
+  listsTool,
   settingsTool,
 ];
 

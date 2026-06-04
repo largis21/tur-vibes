@@ -114,21 +114,52 @@ export default defineConfig({
         orientation: "portrait",
         start_url: "/",
         icons: [
+          // Android launcher icons
           {
-            src: "assets/icon.png",
+            src: "icons/android/launchericon-48x48.png",
+            sizes: "48x48",
+            type: "image/png",
+          },
+          {
+            src: "icons/android/launchericon-72x72.png",
+            sizes: "72x72",
+            type: "image/png",
+          },
+          {
+            src: "icons/android/launchericon-96x96.png",
+            sizes: "96x96",
+            type: "image/png",
+          },
+          {
+            src: "icons/android/launchericon-144x144.png",
+            sizes: "144x144",
+            type: "image/png",
+          },
+          {
+            src: "icons/android/launchericon-192x192.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "assets/icon.png",
+            src: "icons/android/launchericon-512x512.png",
             sizes: "512x512",
             type: "image/png",
           },
+          // iOS app icons (for bookmark/home screen)
           {
-            src: "assets/adaptive-icon.png",
+            src: "icons/ios/180.png",
+            sizes: "180x180",
+            type: "image/png",
+          },
+          {
+            src: "icons/ios/192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "icons/ios/512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "maskable",
           },
         ],
       },

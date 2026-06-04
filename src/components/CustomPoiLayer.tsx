@@ -10,10 +10,7 @@ import type { Region } from "../lib/types";
 // Keep this exported so MapChildren click-deselect can reference it (unused now but kept for safety)
 export const CUSTOM_POI_CIRCLE_LAYER = "custom-pois-circle";
 
-function poisInView(
-  pois: CustomPoi[],
-  region: Region,
-) {
+function poisInView(pois: CustomPoi[], region: Region) {
   const minLat = region.latitude - region.latitudeDelta / 2;
   const maxLat = region.latitude + region.latitudeDelta / 2;
   const minLng = region.longitude - region.longitudeDelta / 2;
