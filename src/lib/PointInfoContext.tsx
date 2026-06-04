@@ -13,6 +13,7 @@ import {
   type PointInfo,
 } from "./elevation";
 import type { LatLng } from "./types";
+import { useMap } from "./MapContext";
 
 type PointInfoContextValue = {
   point: LatLng | null;
@@ -29,6 +30,7 @@ type PointInfoContextValue = {
 const PointInfoContext = createContext<PointInfoContextValue | null>(null);
 
 export function PointInfoProvider({ children }: { children: ReactNode }) {
+  const { mapRef } = useMap();
   const [point, setPoint] = useState<LatLng | null>(null);
   const [info, setInfo] = useState<PointInfo | null>(null);
   const [placeName, setPlaceName] = useState<string | null>(null);
@@ -36,7 +38,16 @@ export function PointInfoProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [showAspectArrow, setShowAspectArrow] = useState(false);
 
-  const open = useCallback((p: LatLng) => setPoint(p), []);
+  const open = useCallback(
+    (p: LatLng) => {
+      setPoint(p);
+      const map = mapRef.current;
+      if (!map) return;
+
+      map.panTo([p.longitude, p.latitude], { duration: 150 });
+    },
+    [mapRef],
+  );
   const close = useCallback(() => setPoint(null), []);
   const toggleAspectArrow = useCallback(
     () => setShowAspectArrow((prev) => !prev),

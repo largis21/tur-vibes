@@ -88,16 +88,22 @@ export function PoiProvider({ children }: { children: ReactNode }) {
         return updated;
       });
       setSelectedPoiId(id);
-      // Resolve a real name from the location API, then patch.
-      const resolved = await fetchNearestPlaceName({
-        latitude: poi.lat,
-        longitude: poi.lng,
-      }).catch(() => null);
+      // Resolve a real name from the location API and fetch elevation, then patch.
+      const [resolved, elevations] = await Promise.all([
+        fetchNearestPlaceName({
+          latitude: poi.lat,
+          longitude: poi.lng,
+        }).catch(() => null),
+        fetchElevations([{ latitude: poi.lat, longitude: poi.lng }]).catch(
+          () => [null],
+        ),
+      ]);
       const name = resolved?.name ?? "New POI";
       const locationType = resolved?.type ?? null;
+      const elevation = elevations[0] ?? null;
       setPois((prev) => {
         const updated = prev.map((p) =>
-          p.id === id ? { ...p, name, locationType } : p,
+          p.id === id ? { ...p, name, locationType, elevation } : p,
         );
         savePois(updated);
         return updated;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMap } from "../lib/MapContext";
 import { usePermissions } from "../lib/permissions";
+import { fetchElevations } from "../lib/elevation";
 import type { LatLng } from "../lib/types";
 import { GotoModal } from "./GotoModal";
 
@@ -14,6 +15,9 @@ export function CoordsBox() {
   const { location } = usePermissions();
   const [cursor, setCursor] = useState<LatLng>(cursorCoordinate.current);
   const [user, setUser] = useState<LatLng | null>(null);
+  const [userElevation, setUserElevation] = useState<number | null>(null);
+  const [gpsAltitude, setGpsAltitude] = useState<number | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
   const [gotoOpen, setGotoOpen] = useState(false);
 
   useEffect(() => {
@@ -25,14 +29,23 @@ export function CoordsBox() {
   useEffect(() => {
     if (location !== "granted") {
       setUser(null);
+      setUserElevation(null);
+      setGpsAltitude(null);
+      setAccuracy(null);
       return;
     }
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setUser({
+        const userLocation = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+        };
+        setUser(userLocation);
+        setGpsAltitude(position.coords.altitude);
+        setAccuracy(position.coords.accuracy);
+        fetchElevations([userLocation]).then((elevations) => {
+          setUserElevation(elevations[0] ?? null);
         });
       },
       undefined,
@@ -53,10 +66,10 @@ export function CoordsBox() {
           position: "absolute",
           left: 16,
           bottom: 36,
-          background: "rgba(17, 24, 39, 0.85)",
-          borderRadius: 12,
-          padding: "10px 12px",
-          gap: 4,
+          background: "rgba(17, 24, 39, 0.5)",
+          borderRadius: 8,
+          padding: "6px 10px",
+          gap: 2,
           display: "flex",
           flexDirection: "column",
           alignItems: "flex-start",
@@ -67,7 +80,13 @@ export function CoordsBox() {
         }}
       >
         <Row label="Cursor" value={formatCoord(cursor)} />
-        <Row label="You" value={formatCoord(user)} />
+        <Row
+          label="You"
+          value={formatCoord(user)}
+          elevation={userElevation}
+          gpsAltitude={gpsAltitude}
+          accuracy={accuracy}
+        />
       </button>
       {gotoOpen ? (
         <GotoModal
@@ -86,14 +105,26 @@ export function CoordsBox() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  elevation,
+  gpsAltitude,
+  accuracy,
+}: {
+  label: string;
+  value: string;
+  elevation?: number | null;
+  gpsAltitude?: number | null;
+  accuracy?: number | null;
+}) {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <span
         style={{
           color: "#9ca3af",
-          fontSize: 10,
-          fontWeight: 700,
+          fontSize: 8,
+          fontWeight: 600,
           letterSpacing: 0.5,
           textTransform: "uppercase",
         }}
@@ -104,12 +135,41 @@ function Row({ label, value }: { label: string; value: string }) {
         style={{
           color: "#fff",
           fontFamily: "monospace",
-          fontSize: 13,
-          fontWeight: 600,
+          fontSize: 11,
+          fontWeight: 500,
         }}
       >
         {value}
       </span>
+      {gpsAltitude !== null && gpsAltitude !== undefined && (
+        <span
+          style={{
+            color: "#fff",
+            fontFamily: "monospace",
+            fontSize: 9,
+            fontWeight: 400,
+            marginTop: 1,
+          }}
+        >
+          GPS: {Math.round(gpsAltitude)} m
+          {accuracy !== null &&
+            accuracy !== undefined &&
+            ` (±${Math.round(accuracy)}m)`}
+        </span>
+      )}
+      {elevation !== null && elevation !== undefined && (
+        <span
+          style={{
+            color: "#fff",
+            fontFamily: "monospace",
+            fontSize: 9,
+            fontWeight: 400,
+            marginTop: 1,
+          }}
+        >
+          Terrain: {Math.round(elevation)} m
+        </span>
+      )}
     </div>
   );
 }
