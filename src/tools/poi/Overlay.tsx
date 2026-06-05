@@ -210,6 +210,7 @@ export function PoiOverlay() {
           aria-label={`Sort by ${sortMode}`}
           onClick={cycleSort}
           style={{
+            display: managePanelOpen ? "flex" : "none",
             background:
               sortMode !== "date"
                 ? "rgba(255,255,255,0.2)"
@@ -219,7 +220,6 @@ export function PoiOverlay() {
             borderRadius: 10,
             width: 44,
             height: 44,
-            display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",

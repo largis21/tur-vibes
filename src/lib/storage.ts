@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   steepnessOpacity: "tur-vibes:steepness-opacity",
   permissions: "tur-vibes:permissions",
   navigationBearings: "tur-vibes:navigation:bearings",
+  onboardingCompleted: "tur-vibes:onboarding-completed",
 } as const;
 
 /** Read a raw string. Returns null on any failure (private mode, missing). */

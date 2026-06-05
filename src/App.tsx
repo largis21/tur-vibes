@@ -12,6 +12,7 @@ import { Crosshair } from "./components/Crosshair";
 import { DefaultUi } from "./components/DefaultUi";
 import { MapView } from "./components/MapView";
 import { OfflineModeBanner } from "./components/OfflineModeBanner";
+import { OnboardingModal } from "./components/OnboardingModal";
 import { PointInfoModal } from "./components/PointInfoModal";
 import { Sidebar } from "./components/Sidebar";
 import {
@@ -20,6 +21,7 @@ import {
   type RegionChangeListener,
 } from "./lib/MapContext";
 import { registerOfflineProtocols } from "./lib/offlineTiles";
+import { OnboardingProvider } from "./lib/OnboardingContext";
 import { PermissionsProvider } from "./lib/permissions";
 import { loadLastRegion } from "./lib/persistedRegion";
 import { PeakProvider } from "./lib/PeakContext";
@@ -96,20 +98,22 @@ export default function App() {
 
   return (
     <MapContextProvider value={mapContextValue}>
-      <PermissionsProvider>
-        <UiStateProvider>
-          <PointInfoProvider>
-            <PeakProvider>
-              <ToolProviders>
-                <AppContent
-                  activeToolId={activeToolId}
-                  setActiveToolId={setActiveToolId}
-                />
-              </ToolProviders>
-            </PeakProvider>
-          </PointInfoProvider>
-        </UiStateProvider>
-      </PermissionsProvider>
+      <OnboardingProvider>
+        <PermissionsProvider>
+          <UiStateProvider>
+            <PointInfoProvider>
+              <PeakProvider>
+                <ToolProviders>
+                  <AppContent
+                    activeToolId={activeToolId}
+                    setActiveToolId={setActiveToolId}
+                  />
+                </ToolProviders>
+              </PeakProvider>
+            </PointInfoProvider>
+          </UiStateProvider>
+        </PermissionsProvider>
+      </OnboardingProvider>
     </MapContextProvider>
   );
 }
@@ -159,6 +163,7 @@ function AppContent({ activeToolId, setActiveToolId }: AppContentProps) {
       <PeakInfoModal />
       <CustomPoiCard />
       <PointInfoModal />
+      <OnboardingModal />
       <Sidebar
         isOpen={sidebarOpen}
         tools={tools}

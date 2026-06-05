@@ -15,6 +15,7 @@ type MarkerPosition = { x: number; y: number };
 type MeasureContextValue = {
   points: LatLng[];
   markerPositions: MarkerPosition[];
+  cursorPosition: LatLng;
   addPoint: () => void;
   removeLastPoint: () => void;
   clear: () => void;
@@ -34,6 +35,10 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
   const { mapRef, cursorCoordinate, subscribeRegionChange } = useMap();
   const [points, setPoints] = useState<LatLng[]>([]);
   const [markerPositions, setMarkerPositions] = useState<MarkerPosition[]>([]);
+  const [cursorPosition, setCursorPosition] = useState<LatLng>(() => ({
+    latitude: cursorCoordinate.current.latitude,
+    longitude: cursorCoordinate.current.longitude,
+  }));
 
   const updateMarkerPositions = useCallback(
     (nextPoints: LatLng[]) => {
@@ -54,8 +59,13 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return subscribeRegionChange(() => {
       updateMarkerPositions(points);
+      // Also update cursor position when region changes
+      setCursorPosition({
+        latitude: cursorCoordinate.current.latitude,
+        longitude: cursorCoordinate.current.longitude,
+      });
     });
-  }, [points, subscribeRegionChange, updateMarkerPositions]);
+  }, [points, subscribeRegionChange, updateMarkerPositions, cursorCoordinate]);
 
   const addPoint = useCallback(() => {
     setPoints((current) => {
@@ -79,8 +89,15 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ points, markerPositions, addPoint, removeLastPoint, clear }),
-    [points, markerPositions, addPoint, removeLastPoint, clear],
+    () => ({
+      points,
+      markerPositions,
+      cursorPosition,
+      addPoint,
+      removeLastPoint,
+      clear,
+    }),
+    [points, markerPositions, cursorPosition, addPoint, removeLastPoint, clear],
   );
 
   return (

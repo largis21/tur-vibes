@@ -10,6 +10,7 @@ export type MapContextValue = {
   regionListeners: MutableRefObject<Set<RegionChangeListener>>;
   subscribeRegionChange: (listener: RegionChangeListener) => () => void;
   deactivateTool: () => void;
+  userPosition: LatLng | null;
 };
 
 const MapContext = createContext<MapContextValue | null>(null);
