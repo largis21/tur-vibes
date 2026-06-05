@@ -1,29 +1,12 @@
-import type { ButtonHTMLAttributes, CSSProperties } from "react";
+import type { ButtonHTMLAttributes } from "react";
 
 type FabButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   active?: boolean;
 };
 
-const baseStyle: CSSProperties = {
-  width: 52,
-  height: 52,
-  borderRadius: 16,
-  background: "#fff",
-  color: "#111827",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxShadow: "0 3px 6px rgba(0,0,0,0.25)",
-};
-
-const activeStyle: CSSProperties = {
-  background: "#f97316",
-  color: "#fff",
-};
-
 export function FabButton({
   active,
-  style,
+  className = "",
   children,
   ...rest
 }: FabButtonProps) {
@@ -31,11 +14,11 @@ export function FabButton({
     <button
       type="button"
       {...rest}
-      style={{
-        ...baseStyle,
-        ...(active ? activeStyle : null),
-        ...style,
-      }}
+      className={`w-13 h-13 rounded-2xl flex items-center justify-center shadow-lg transition-colors ${
+        active
+          ? "bg-accent text-white"
+          : "bg-white text-black hover:bg-gray-100"
+      } ${className}`}
     >
       {children}
     </button>

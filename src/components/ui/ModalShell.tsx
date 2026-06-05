@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import { PiX } from "react-icons/pi";
+import { PiX, PiArrowLeft } from "react-icons/pi";
 
-interface ModalShellProps {
+export interface ModalShellProps {
   children: ReactNode;
-  /** Short label shown as the uppercase header tag. */
+  /** Large title shown with full opacity. */
   title: string;
-  /** Optional secondary line beneath the title. */
+  /** Optional secondary line with reduced opacity. */
   subtitle?: ReactNode;
   onClose?: () => void;
+  /** Called when back button is clicked. If set, renders a back button. */
+  onBack?: () => void;
   ariaLabel?: string;
   /** Render a darkened backdrop; clicking it calls onClose. */
   backdrop?: boolean;
@@ -22,6 +24,7 @@ export function ModalShell({
   title,
   subtitle,
   onClose,
+  onBack,
   ariaLabel,
   backdrop = false,
   scrollable = false,
@@ -48,14 +51,38 @@ export function ModalShell({
     >
       {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ flex: 1 }}>
+        {onBack && (
+          <button
+            aria-label="Back"
+            onClick={onBack}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              background: "rgba(255,255,255,0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <PiArrowLeft
+              size={18}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
+          </button>
+        )}
+        <div style={{ flex: 1, lineHeight: 1.2 }}>
           <div
             style={{
-              color: "#9ca3af",
-              fontSize: 11,
+              color: "#ffffff",
+              fontSize: 18,
               fontWeight: 700,
-              letterSpacing: 0.5,
-              textTransform: "uppercase",
+              marginTop: 0,
+              marginBottom: 0,
             }}
           >
             {title}
@@ -64,9 +91,8 @@ export function ModalShell({
             <div
               style={{
                 fontSize: 14,
-                fontWeight: 700,
-                marginTop: 2,
-                color: "#f3f4f6",
+                fontWeight: 400,
+                color: "rgba(255, 255, 255, 0.6)",
               }}
             >
               {subtitle}
@@ -80,12 +106,14 @@ export function ModalShell({
             style={{
               width: 36,
               height: 36,
-              borderRadius: 10,
+              borderRadius: 8,
               background: "rgba(255,255,255,0.15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
+              border: "none",
+              cursor: "pointer",
             }}
           >
             <PiX

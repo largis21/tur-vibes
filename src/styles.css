@@ -1,3 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #f97316;
+  --color-accent-dark: #ea580c;
+  --color-accent-light: #fb923c;
+
+  --color-dark-50: #f8fafc;
+  --color-dark-100: #f1f5f9;
+  --color-dark-200: #e2e8f0;
+  --color-dark-300: #cbd5e1;
+  --color-dark-400: #94a3b8;
+  --color-dark-500: #64748b;
+  --color-dark-600: #475569;
+  --color-dark-700: #334155;
+  --color-dark-800: #1e293b;
+  --color-dark-900: #0f172a;
+
+  --spacing-5: 1.25rem;
+  --spacing-9: 2.25rem;
+  --spacing-10: 2.5rem;
+  --spacing-safe: max(1rem, env(safe-area-inset-bottom));
+
+  --width-70: 17.5rem;
+  --width-13: 3.25rem;
+
+  --height-13: 3.25rem;
+
+  --z-index-backdrop: 50;
+  --z-index-sidebar: 51;
+  --z-index-modal: 52;
+  --z-index-toast: 53;
+
+  --radius-primary: 1.5rem;
+  --radius-secondary: 0.5rem;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -5,6 +42,8 @@
 html,
 body,
 #root {
+  height: 100%;
+  width: 100%;
   background: #111827;
   margin: 0;
   padding: 0;
@@ -19,17 +58,17 @@ body,
   -webkit-user-select: none;
 }
 
-button {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
+@layer base {
+  button {
+    font: inherit;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
 
-button:disabled {
-  cursor: default;
+  button:disabled {
+    cursor: default;
+  }
 }
 
 /* MapLibre overrides */

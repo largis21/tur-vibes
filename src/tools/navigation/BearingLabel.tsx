@@ -59,28 +59,14 @@ export function BearingLabel({ bearing }: { bearing: Bearing }) {
   return (
     <div
       ref={containerRef}
+      className="absolute top-0 left-0 opacity-0 pointer-events-none"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        opacity: 0,
-        pointerEvents: "none",
         transform: "translate3d(-9999px,-9999px,0)",
       }}
     >
       <div
-        style={{
-          background: "rgba(249, 115, 22, 0.92)",
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 800,
-          padding: "4px 10px",
-          borderRadius: 8,
-          whiteSpace: "nowrap",
-          transform: "translate(-50%, -50%)",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
-          letterSpacing: 0.3,
-        }}
+        className="bg-orange-500/92 text-white text-xs font-black px-2.5 py-1 rounded-lg whitespace-nowrap -translate-x-1/2 -translate-y-1/2 shadow-md tracking-normal"
+        style={{ letterSpacing: 0.3 }}
       >
         {formatHeading(bearing.heading)}
       </div>

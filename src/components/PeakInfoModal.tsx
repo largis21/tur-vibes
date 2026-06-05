@@ -1,5 +1,5 @@
 import { usePeak } from "../lib/PeakContext";
-import { ModalShell } from "./ModalShell";
+import { ModalShell } from "./ui/ModalShell";
 
 export function PeakInfoModal() {
   const { selectedPeak, selectPeak } = usePeak();

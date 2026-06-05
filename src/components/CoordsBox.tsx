@@ -35,6 +35,10 @@ export function CoordsBox() {
       return;
     }
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
+
+    let elevationTimeoutId: number | null = null;
+    let elevationCtrl: AbortController | null = null;
+
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const userLocation = {
@@ -44,15 +48,32 @@ export function CoordsBox() {
         setUser(userLocation);
         setGpsAltitude(position.coords.altitude);
         setAccuracy(position.coords.accuracy);
-        fetchElevations([userLocation]).then((elevations) => {
-          setUserElevation(elevations[0] ?? null);
-        });
+
+        // Debounce elevation fetches to avoid spamming the API
+        if (elevationTimeoutId !== null) clearTimeout(elevationTimeoutId);
+        if (elevationCtrl) elevationCtrl.abort();
+
+        elevationCtrl = new AbortController();
+        elevationTimeoutId = window.setTimeout(() => {
+          fetchElevations([userLocation], elevationCtrl!.signal)
+            .then((elevations) => {
+              if (!elevationCtrl!.signal.aborted) {
+                setUserElevation(elevations[0] ?? null);
+              }
+            })
+            .catch(() => {
+              /* ignore cancellations and errors */
+            });
+          elevationTimeoutId = null;
+        }, 2000); // Only fetch elevation every 2 seconds max
       },
       undefined,
       { enableHighAccuracy: false, maximumAge: 5000 },
     );
     return () => {
       navigator.geolocation.clearWatch(watchId);
+      if (elevationTimeoutId !== null) clearTimeout(elevationTimeoutId);
+      if (elevationCtrl) elevationCtrl.abort();
     };
   }, [location]);
 
@@ -62,22 +83,7 @@ export function CoordsBox() {
         type="button"
         onClick={() => setGotoOpen(true)}
         aria-label="Go to coordinate"
-        style={{
-          position: "absolute",
-          left: 16,
-          bottom: 36,
-          background: "rgba(17, 24, 39, 0.5)",
-          borderRadius: 8,
-          padding: "6px 10px",
-          gap: 2,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          textAlign: "left",
-          zIndex: 10,
-          border: "none",
-          color: "inherit",
-        }}
+        className="absolute left-4 bottom-9 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left"
       >
         <Row label="Cursor" value={formatCoord(cursor)} />
         <Row
@@ -119,38 +125,13 @@ function Row({
   accuracy?: number | null;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <span
-        style={{
-          color: "#9ca3af",
-          fontSize: 8,
-          fontWeight: 600,
-          letterSpacing: 0.5,
-          textTransform: "uppercase",
-        }}
-      >
+    <div className="flex flex-col">
+      <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
         {label}
       </span>
-      <span
-        style={{
-          color: "#fff",
-          fontFamily: "monospace",
-          fontSize: 11,
-          fontWeight: 500,
-        }}
-      >
-        {value}
-      </span>
+      <span className="text-white font-mono text-xs font-medium">{value}</span>
       {gpsAltitude !== null && gpsAltitude !== undefined && (
-        <span
-          style={{
-            color: "#fff",
-            fontFamily: "monospace",
-            fontSize: 9,
-            fontWeight: 400,
-            marginTop: 1,
-          }}
-        >
+        <span className="text-white font-mono text-xs font-normal mt-0.5">
           GPS: {Math.round(gpsAltitude)} m
           {accuracy !== null &&
             accuracy !== undefined &&
@@ -158,15 +139,7 @@ function Row({
         </span>
       )}
       {elevation !== null && elevation !== undefined && (
-        <span
-          style={{
-            color: "#fff",
-            fontFamily: "monospace",
-            fontSize: 9,
-            fontWeight: 400,
-            marginTop: 1,
-          }}
-        >
+        <span className="text-white font-mono text-xs font-normal mt-0.5">
           Terrain: {Math.round(elevation)} m
         </span>
       )}

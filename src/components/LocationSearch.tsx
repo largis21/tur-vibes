@@ -110,6 +110,7 @@ export function LocationSearch({
         setResults(withDist.slice(0, 8));
         setError(null);
       } catch (err) {
+        console.error(err);
         if ((err as Error).name !== "AbortError") {
           setError("Search failed. Check your connection.");
         }
@@ -137,33 +138,18 @@ export function LocationSearch({
 
   function formatSubtitle(r: StedResult): string {
     const parts: string[] = [r.navneobjekttype];
-    const kommune = r.kommuner[0]?.kommunenavn;
-    const fylke = r.fylker[0]?.fylkesnavn;
+    const kommune = r.kommuner?.[0]?.kommunenavn;
+    const fylke = r.fylker?.[0]?.fylkesnavn;
     if (kommune) parts.push(kommune);
     else if (fylke) parts.push(fylke);
     return parts.join(" · ");
   }
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div
-        style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        <span
-          style={{
-            position: "absolute",
-            left: 10,
-            display: "flex",
-            alignItems: "center",
-            color: "#6b7280",
-            pointerEvents: "none",
-          }}
-        >
-          <PiMagnifyingGlass size={18} style={{ display: "block" }} />
+    <div className="mb-6">
+      <div className="flex items-center relative">
+        <span className="absolute left-2.5 flex items-center text-gray-500 pointer-events-none">
+          <PiMagnifyingGlass size={18} className="block" />
         </span>
         <input
           ref={inputRef}
@@ -171,17 +157,7 @@ export function LocationSearch({
           placeholder="Search location"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px 36px 10px 36px",
-            borderRadius: 12,
-            border: "1.5px solid #e5e7eb",
-            fontSize: 15,
-            background: "#f9fafb",
-            color: "#111827",
-            outline: "none",
-            boxSizing: "border-box",
-          }}
+          className="w-full px-9 py-2.5 rounded-secondary border-1.5 border-gray-200 text-base bg-gray-50 text-dark-900 outline-none box-border"
         />
         {query && (
           <button
@@ -191,105 +167,55 @@ export function LocationSearch({
               setResults([]);
               inputRef.current?.focus();
             }}
-            style={{
-              position: "absolute",
-              right: 8,
-              display: "flex",
-              alignItems: "center",
-              color: "#9ca3af",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 2,
-            }}
+            className="absolute right-2 flex items-center text-gray-400 bg-none border-0 cursor-pointer p-0.5"
           >
-            <PiX size={16} style={{ display: "block" }} />
+            <PiX size={16} className="block" />
           </button>
         )}
       </div>
 
-      {loading && (
-        <p style={{ margin: "6px 0 0 4px", fontSize: 13, color: "#6b7280" }}>
-          Searching…
-        </p>
-      )}
+      <div className="mt-1.5 relative">
+        {loading && (
+          <p className="ml-1 text-xs text-gray-500 absolute">Searching…</p>
+        )}
 
-      {error && (
-        <p style={{ margin: "6px 0 0 4px", fontSize: 13, color: "#dc2626" }}>
-          {error}
-        </p>
-      )}
+        {error && <p className="ml-1 text-xs text-red-600 absolute">{error}</p>}
 
-      {results.length > 0 && (
-        <ul
-          style={{
-            listStyle: "none",
-            margin: "6px 0 0",
-            padding: 0,
-            borderRadius: 12,
-            border: "1.5px solid #e5e7eb",
-            maxHeight: 200,
-            overflowY: "auto",
-            background: "#fff",
-          }}
-        >
-          {results.map((r, i) => (
-            <li key={r.stedsnummer}>
-              <button
-                onClick={() => handleSelect(r)}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 8,
-                  width: "100%",
-                  padding: "10px 12px",
-                  background: "none",
-                  border: "none",
-                  borderTop: i === 0 ? "none" : "1px solid #f3f4f6",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  color: "#111827",
-                  lineHeight: 1.35,
-                }}
-              >
-                <span style={{ marginTop: 2, color: "#9ca3af", flexShrink: 0 }}>
-                  <PiMapPin size={14} style={{ display: "block" }} />
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontWeight: 600 }}>
-                    {r.skrivemåte}
-                  </span>
-                  <span
-                    style={{ display: "block", color: "#6b7280", fontSize: 12 }}
-                  >
-                    {formatSubtitle(r)}
-                  </span>
-                </span>
-                {r.distanceKm != null && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "#9ca3af",
-                      flexShrink: 0,
-                      alignSelf: "center",
-                      marginLeft: 4,
-                    }}
-                  >
-                    {formatDistance(r.distanceKm)}
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        {!loading && !error && query.trim() && results.length === 0 && (
+          <p className="ml-1 text-xs text-gray-500 absolute">
+            No results found.
+          </p>
+        )}
 
-      {!loading && !error && query.trim() && results.length === 0 && (
-        <p style={{ margin: "6px 0 0 4px", fontSize: 13, color: "#6b7280" }}>
-          No results found.
-        </p>
-      )}
+        {results.length > 0 && (
+          <ul className="list-none p-0 rounded-secondary border border-gray-200 max-h-50 overflow-y-auto bg-white absolute top-0 left-0 right-0 z-10">
+            {results.map((r, i) => (
+              <li key={r.stedsnummer}>
+                <button
+                  onClick={() => handleSelect(r)}
+                  className="flex items-start gap-2 w-full px-3 py-2.5 bg-none border-0 text-left cursor-pointer text-xs text-dark-900 leading-relaxed"
+                  style={{ borderTop: i === 0 ? "none" : "1px solid #f3f4f6" }}
+                >
+                  <span className="mt-0.5 text-gray-400 flex-shrink-0">
+                    <PiMapPin size={14} className="block" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-semibold">{r.skrivemåte}</span>
+                    <span className="block text-gray-500 text-2xs">
+                      {formatSubtitle(r)}
+                    </span>
+                  </span>
+                  {r.distanceKm != null && (
+                    <span className="text-2xs text-gray-400 flex-shrink-0 self-center ml-1">
+                      {formatDistance(r.distanceKm)}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

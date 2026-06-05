@@ -1,6 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import tailwindcss from "@tailwindcss/vite";
 import { execSync } from "child_process";
 
 const COLORS: Record<string, string> = {
@@ -98,6 +99,7 @@ function remoteLogPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     react(),
     remoteLogPlugin(),
     buildInfoPlugin(),

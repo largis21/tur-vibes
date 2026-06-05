@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ModalShell } from "./ModalShell";
+import { ModalShell } from "./ui/ModalShell";
 import { PermissionsSection } from "../tools/settings/PermissionsSection";
 import { useOnboarding } from "../lib/OnboardingContext";
 import { usePermissions } from "../lib/permissions";
@@ -45,36 +45,20 @@ export function OnboardingModal() {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-    >
-      <div style={{ maxWidth: 400, width: "90%" }}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-1000">
+      <div className="max-w-sm w-[90%]">
         <ModalShell
           title="Welcome to Tur Vibes"
           subtitle="We need a couple of permissions to show you on the map"
           scrollable
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div
-              style={{
-                color: "#d1d5db",
-                fontSize: 14,
-                lineHeight: 1.6,
-              }}
-            >
+          <div className="flex flex-col gap-6">
+            <div className="text-gray-300 text-sm leading-relaxed">
               To get the most out of your hiking experience, we'd like access
               to:
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="flex flex-col gap-4">
               <PermissionsSection
                 location={location}
                 orientation={orientation}
@@ -83,37 +67,14 @@ export function OnboardingModal() {
               />
             </div>
 
-            <div
-              style={{
-                color: "#9ca3af",
-                fontSize: 12,
-                lineHeight: 1.5,
-              }}
-            >
+            <div className="text-gray-400 text-xs leading-relaxed">
               You can change these permissions anytime in Settings. Skip for now
               and request them later if you prefer.
             </div>
 
             <button
               onClick={markCompleted}
-              style={{
-                backgroundColor: "#3b82f6",
-                color: "#fff",
-                border: "none",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                width: "100%",
-                transition: "background-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#2563eb";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#3b82f6";
-              }}
+              className="bg-blue-500 hover:bg-blue-600 text-white border-0 px-4 py-3 rounded-lg text-sm font-semibold cursor-pointer w-full transition-colors duration-200"
             >
               Let's Get Started
             </button>

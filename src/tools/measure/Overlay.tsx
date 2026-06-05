@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { formatDistance, getTotalDistanceMeters } from "../../lib/geo";
 import { useMap } from "../../lib/MapContext";
 import { PiBackspace, PiPlus } from "react-icons/pi";
-import { HeaderShell } from "../../components/HeaderShell";
+import { HeaderShell } from "../../components/ui/HeaderShell";
 import { useMeasure } from "./context";
 
 export function MeasureOverlay() {

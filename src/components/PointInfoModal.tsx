@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { usePointInfo } from "../lib/PointInfoContext";
 import { usePoi } from "../tools/poi/context";
-import { ModalShell } from "./ModalShell";
+import { ModalShell } from "./ui/ModalShell";
 import { TerrainViewModalContent } from "./TerrainViewModal";
 import { PiMapPin, PiMountains, PiArrowLeft } from "react-icons/pi";
 
@@ -54,7 +54,11 @@ export function PointInfoModal() {
   return (
     <ModalShell
       title={showTerrainView ? "Terrain View" : "Point info"}
-      subtitle={showTerrainView ? `${point.latitude.toFixed(4)}°N, ${point.longitude.toFixed(4)}°E` : placeName}
+      subtitle={
+        showTerrainView
+          ? `${point.latitude.toFixed(4)}°N, ${point.longitude.toFixed(4)}°E`
+          : placeName
+      }
       onClose={handleClose}
     >
       {showTerrainView ? (
@@ -62,143 +66,79 @@ export function PointInfoModal() {
           <TerrainViewModalContent point={point} />
           <button
             onClick={() => setShowTerrainView(false)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              width: "100%",
-              marginTop: "12px",
-              padding: "11px 14px",
-              borderRadius: 12,
-              background: "rgba(107,114,128,0.15)",
-              border: "1px solid rgba(107,114,128,0.4)",
-              color: "#d1d5db",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
+            className="flex items-center justify-center gap-2 w-full mt-3 px-3.5 py-2.75 rounded-lg bg-gray-600/15 border border-gray-600/40 text-gray-300 text-sm font-semibold hover:bg-gray-600/25 transition-colors"
           >
-            <PiArrowLeft size={16} style={{ display: "block", flexShrink: 0 }} />
+            <PiArrowLeft size={16} className="flex-shrink-0" />
             Back
           </button>
         </>
       ) : (
         <>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-          >
-          <Stat
-            label="Coordinates"
-            value={`${formatCoord(point.latitude)}, ${formatCoord(point.longitude)}`}
-          />
-          <Stat
-            label="Elevation"
-            value={
-              loading
-                ? "…"
-                : info?.elevation != null
-                  ? `${info.elevation.toFixed(0)} m`
-                  : "–"
-            }
-          />
-          <Stat
-            label="Slope"
-            value={
-              loading
-                ? "…"
-                : info?.slopeDeg != null
-                  ? `${info.slopeDeg.toFixed(1)}°`
-                  : "–"
-            }
-          />
-          <Stat
-            label="Aspect"
-            value={
-              loading
-                ? "…"
-                : info?.aspectDeg != null
-                  ? `${compassFromBearing(info.aspectDeg)} (${Math.round(info.aspectDeg)}°)`
-                  : "–"
-            }
-            onClick={toggleAspectArrow}
-            isClickable={info?.aspectDeg != null && !loading}
-            isActive={showAspectArrow}
-          />
-        </div>
-
-        {error ? (
-          <div
-            style={{
-              fontSize: 12,
-              color: "#fca5a5",
-              background: "rgba(220, 38, 38, 0.15)",
-              borderRadius: 8,
-              padding: "6px 8px",
-            }}
-          >
-            {error} — elevation requires an internet connection.
+          <div className="grid grid-cols-2 gap-3">
+            <Stat
+              label="Coordinates"
+              value={`${formatCoord(point.latitude)}, ${formatCoord(point.longitude)}`}
+            />
+            <Stat
+              label="Elevation"
+              value={
+                loading
+                  ? "…"
+                  : info?.elevation != null
+                    ? `${info.elevation.toFixed(0)} m`
+                    : "–"
+              }
+            />
+            <Stat
+              label="Slope"
+              value={
+                loading
+                  ? "…"
+                  : info?.slopeDeg != null
+                    ? `${info.slopeDeg.toFixed(1)}°`
+                    : "–"
+              }
+            />
+            <Stat
+              label="Aspect"
+              value={
+                loading
+                  ? "…"
+                  : info?.aspectDeg != null
+                    ? `${compassFromBearing(info.aspectDeg)} (${Math.round(info.aspectDeg)}°)`
+                    : "–"
+              }
+              onClick={toggleAspectArrow}
+              isClickable={info?.aspectDeg != null && !loading}
+              isActive={showAspectArrow}
+            />
           </div>
-        ) : null}
 
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-          }}
-        >
-          <button
-            onClick={() => setShowTerrainView(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              flex: 1,
-              padding: "11px 14px",
-              borderRadius: 12,
-              background: "rgba(168,85,247,0.15)",
-              border: "1px solid rgba(168,85,247,0.4)",
-              color: "#d8b4fe",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            <PiMountains
-              size={16}
-              style={{ display: "block", flexShrink: 0 }}
-            />
-            View from here
-          </button>
+          {error ? (
+            <div className="text-xs text-red-300 bg-red-900/15 rounded px-2 py-1.5">
+              {error} — elevation requires an internet connection.
+            </div>
+          ) : null}
 
-          <button
-            onClick={handleSaveAsPoi}
-            disabled={saving}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              flex: 1,
-              padding: "11px 14px",
-              borderRadius: 12,
-              background: "rgba(59,130,246,0.15)",
-              border: "1px solid rgba(59,130,246,0.4)",
-              color: "#60a5fa",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: saving ? "default" : "pointer",
-              opacity: saving ? 0.6 : 1,
-            }}
-          >
-            <PiMapPin
-              size={16}
-              color="#60a5fa"
-              style={{ display: "block", flexShrink: 0 }}
-            />
-            {saving ? "Saving…" : "Save as POI"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowTerrainView(true)}
+              className="flex items-center justify-center gap-2 flex-1 px-3.5 py-2.75 rounded-lg bg-purple-500/15 border border-purple-500/40 text-purple-300 text-sm font-semibold hover:bg-purple-500/25 transition-colors"
+            >
+              <PiMountains size={16} className="flex-shrink-0" />
+              View from here
+            </button>
+
+            <button
+              onClick={handleSaveAsPoi}
+              disabled={saving}
+              className={`flex items-center justify-center gap-2 flex-1 px-3.5 py-2.75 rounded-lg bg-blue-500/15 border border-blue-500/40 text-blue-300 text-sm font-semibold hover:bg-blue-500/25 transition-colors ${
+                saving ? "opacity-60 cursor-not-allowed" : ""
+              }`}
+            >
+              <PiMapPin size={16} className="flex-shrink-0" />
+              {saving ? "Saving…" : "Save as POI"}
+            </button>
           </div>
         </>
       )}
@@ -222,49 +162,18 @@ function Stat({
   return (
     <div
       onClick={isClickable ? onClick : undefined}
-      style={{
-        cursor: isClickable ? "pointer" : "default",
-        padding: isClickable ? "8px 10px" : "0",
-        borderRadius: isClickable ? "8px" : "0",
-        backgroundColor: isActive
-          ? "rgba(59,130,246,0.25)"
-          : isClickable
-            ? "rgba(59,130,246,0.08)"
-            : "transparent",
-        transition: isClickable ? "all 0.15s" : "none",
-      }}
-      onMouseEnter={(e) => {
-        if (isClickable && !isActive) {
-          e.currentTarget.style.backgroundColor = "rgba(59,130,246,0.15)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (isClickable && !isActive) {
-          e.currentTarget.style.backgroundColor = "rgba(59,130,246,0.08)";
-        }
-      }}
+      className={`transition-colors ${
+        isClickable
+          ? `cursor-pointer px-2.5 py-2 rounded-lg ${
+              isActive ? "bg-blue-600/25" : "bg-blue-600/8 hover:bg-blue-600/15"
+            }`
+          : ""
+      }`}
     >
-      <div
-        style={{
-          color: "#9ca3af",
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: 0.5,
-          textTransform: "uppercase",
-        }}
-      >
+      <div className="text-gray-400 text-xs font-bold uppercase tracking-wider">
         {label}
       </div>
-      <div
-        style={{
-          fontFamily: "monospace",
-          fontSize: 16,
-          fontWeight: 700,
-          marginTop: 2,
-        }}
-      >
-        {value}
-      </div>
+      <div className="font-mono text-base font-bold mt-0.5">{value}</div>
     </div>
   );
 }

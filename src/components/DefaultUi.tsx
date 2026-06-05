@@ -56,17 +56,7 @@ export function DefaultUi({
       ) : null}
       {has("coordsBox") && !hideNonCompass ? <CoordsBox /> : null}
       {(fabButtons.length > 0 || hasActivePoiFilter) && !hideNonCompass ? (
-        <div
-          style={{
-            position: "absolute",
-            right: 20,
-            bottom: 40,
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            zIndex: 30,
-          }}
-        >
+        <div className="absolute right-5 bottom-10 flex flex-col gap-3 z-30">
           {hasActivePoiFilter && (
             <FabButton
               aria-label="Active POI filters — tap to manage"
@@ -76,11 +66,7 @@ export function DefaultUi({
               }}
               active
             >
-              <PiFunnel
-                size={20}
-                color="#fff"
-                style={{ display: "block", flexShrink: 0 }}
-              />
+              <PiFunnel size={20} className="flex-shrink-0" />
             </FabButton>
           )}
           {fabButtons}

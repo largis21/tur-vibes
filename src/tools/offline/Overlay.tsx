@@ -112,18 +112,7 @@ export function OfflineDownloadBadge() {
       )
     : 0;
   return (
-    <span
-      style={{
-        background: "#f97316",
-        color: "#fff",
-        fontSize: 11,
-        fontWeight: 700,
-        borderRadius: 6,
-        padding: "2px 6px",
-        marginLeft: 4,
-        flexShrink: 0,
-      }}
-    >
+    <span className="bg-orange-500 text-white text-xs font-bold rounded-md px-1.5 py-0.5 ml-1 flex-shrink-0">
       {pct}%
     </span>
   );

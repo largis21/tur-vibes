@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { LatLng } from "../lib/types";
-import { ModalShell } from "./ModalShell";
+import { ModalShell } from "./ui/ModalShell";
 
 /**
  * Parse one or two coordinate inputs into a LatLng. Accepts either a single
@@ -87,7 +87,7 @@ export function GotoModal({
             onClick={onClose}
             style={{
               padding: "10px 14px",
-              borderRadius: 10,
+              borderRadius: 8,
               background: "rgba(255,255,255,0.12)",
               color: "#d1d5db",
               fontSize: 14,
@@ -100,7 +100,7 @@ export function GotoModal({
             type="submit"
             style={{
               padding: "10px 14px",
-              borderRadius: 10,
+              borderRadius: 8,
               background: "#1d4ed8",
               color: "#fff",
               fontSize: 14,
@@ -144,7 +144,7 @@ function Field({
         placeholder={placeholder}
         style={{
           padding: "10px 12px",
-          borderRadius: 10,
+          borderRadius: 8,
           border: "1px solid rgba(255,255,255,0.15)",
           background: "rgba(255,255,255,0.08)",
           color: "#f3f4f6",

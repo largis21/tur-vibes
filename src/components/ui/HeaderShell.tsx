@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { PiX } from "react-icons/pi";
 
-interface HeaderShellProps {
+export interface HeaderShellProps {
   children: ReactNode;
   onClose: () => void;
   ariaLabel?: string;

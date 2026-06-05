@@ -6,7 +6,7 @@ import {
   PiPlus,
   PiFunnel,
 } from "react-icons/pi";
-import { HeaderShell } from "../../components/HeaderShell";
+import { HeaderShell } from "../../components/ui/HeaderShell";
 import { FabButton } from "../../components/FabButton";
 import { useMap } from "../../lib/MapContext";
 import { usePoi } from "./context";
@@ -24,6 +24,24 @@ const FILTER_COLORS: { hex: string; label: string }[] = [
   { hex: "#ffffff", label: "White" },
 ];
 
+/** Calculate distance in km between two lat/lon points using Haversine formula. */
+function haversineKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export function PoiOverlay() {
   const { deactivateTool, cursorCoordinate, mapRef } = useMap();
   const {
@@ -37,7 +55,9 @@ export function PoiOverlay() {
     setFilterPanelOpen,
   } = usePoi();
   const [managePanelOpen, setManagePanelOpen] = useState(false);
-  const [sortMode, setSortMode] = useState<"name" | "type" | "date">("date");
+  const [sortMode, setSortMode] = useState<
+    "name" | "type" | "date" | "distance"
+  >("date");
 
   function handleClose() {
     selectPoi(null);
@@ -92,7 +112,13 @@ export function PoiOverlay() {
 
   function cycleSort() {
     setSortMode((m) =>
-      m === "date" ? "name" : m === "name" ? "type" : "date",
+      m === "date"
+        ? "name"
+        : m === "name"
+          ? "type"
+          : m === "type"
+            ? "distance"
+            : "date",
     );
   }
 
@@ -128,6 +154,13 @@ export function PoiOverlay() {
       if (sortMode === "name") return a.name.localeCompare(b.name);
       if (sortMode === "type")
         return (a.locationType ?? "").localeCompare(b.locationType ?? "");
+      if (sortMode === "distance") {
+        const center = mapRef.current?.getCenter();
+        if (!center) return 0;
+        const distA = haversineKm(center.lat, center.lng, a.lat, a.lng);
+        const distB = haversineKm(center.lat, center.lng, b.lat, b.lng);
+        return distA - distB; // closest first
+      }
       return b.createdAt - a.createdAt; // date: newest first
     });
 
@@ -235,13 +268,13 @@ export function PoiOverlay() {
           />
           <span
             style={{
-              fontSize: 8,
+              fontSize: 7,
               color: "#9ca3af",
               lineHeight: 1,
               letterSpacing: 0.3,
             }}
           >
-            {sortMode.toUpperCase()}
+            {sortMode === "distance" ? "DIST" : sortMode.toUpperCase()}
           </span>
         </button>
 

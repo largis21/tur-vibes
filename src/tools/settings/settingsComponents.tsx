@@ -11,33 +11,18 @@ export function SectionHeader({
   description?: string;
 }) {
   return (
-    <div style={{ marginTop: 4 }}>
-      <div
-        style={{
-          color: "#9ca3af",
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
+    <div className="mt-1">
+      <div className="text-gray-400 text-2xs font-bold uppercase tracking-wider flex items-center gap-1.5">
         {icon
           ? (() => {
               const I = icon;
-              return (
-                <I size={14} style={{ display: "block", flexShrink: 0 }} />
-              );
+              return <I size={14} className="block flex-shrink-0" />;
             })()
           : null}
         {title}
       </div>
       {description ? (
-        <div style={{ color: "#6b7280", fontSize: 12, marginTop: 2 }}>
-          {description}
-        </div>
+        <div className="text-gray-500 text-xs mt-0.5">{description}</div>
       ) : null}
     </div>
   );
@@ -53,24 +38,13 @@ export function PermissionRow({
   status: "unknown" | "granted" | "denied";
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        justifyContent: "space-between",
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
-          {title}
-        </div>
+    <div className="flex items-center gap-3 justify-between">
+      <div className="flex-1 min-w-0">
+        <div className="text-white text-sm font-bold">{title}</div>
         <div
-          style={{
-            color: status === "denied" ? "#fca5a5" : "#9ca3af",
-            fontSize: 12,
-            marginTop: 2,
-          }}
+          className={`text-xs mt-0.5 ${
+            status === "denied" ? "text-red-300" : "text-gray-400"
+          }`}
         >
           {status === "denied"
             ? "Denied — re-enable in browser settings if the toggle won't grant."
@@ -83,26 +57,9 @@ export function PermissionRow({
 
 export function DataRow({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        justifyContent: "space-between",
-      }}
-    >
-      <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
-        {label}
-      </div>
-      <div
-        style={{
-          color: "#9ca3af",
-          fontSize: 12,
-          fontFamily: "monospace",
-        }}
-      >
-        {value}
-      </div>
+    <div className="flex items-center gap-3 justify-between">
+      <div className="text-white text-xs font-bold">{label}</div>
+      <div className="text-gray-400 text-2xs font-mono">{value}</div>
     </div>
   );
 }
@@ -121,36 +78,14 @@ export function SettingsMenuButton({
   return (
     <button
       onClick={onClick}
-      style={{
-        padding: "14px 16px",
-        borderRadius: 12,
-        fontSize: 14,
-        fontWeight: 600,
-        color: "#fff",
-        background: "rgba(255,255,255,0.08)",
-        border: "1px solid rgba(255,255,255,0.15)",
-        width: "100%",
-        cursor: "pointer",
-        transition: "all 0.15s",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "rgba(255,255,255,0.12)";
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
-      }}
+      className="px-4 py-3.5 rounded-lg text-sm font-semibold text-white bg-white/8 border-1 border-white/15 w-full cursor-pointer transition-all duration-150 flex items-center gap-3 hover:bg-white/12 hover:border-white/25"
     >
-      <Icon size={20} color="#93c5fd" style={{ flexShrink: 0 }} />
-      <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
+      <Icon size={20} color="#93c5fd" className="flex-shrink-0" />
+      <span className="flex-1 text-left">{label}</span>
       <PiCaretRight
         size={18}
         color="rgba(255,255,255,0.5)"
-        style={{ flexShrink: 0 }}
+        className="flex-shrink-0"
       />
     </button>
   );
@@ -168,21 +103,12 @@ export function SettingsSectionHeader({
   description,
 }: SettingsSectionHeaderProps) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <Icon size={16} color="#fff" style={{ flexShrink: 0, marginTop: 2 }} />
-        <div style={{ color: "#fff", fontSize: 16, fontWeight: 800 }}>
-          {title}
-        </div>
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-start gap-2">
+        <Icon size={16} color="#fff" className="flex-shrink-0 mt-0.5" />
+        <div className="text-white text-base font-black">{title}</div>
       </div>
-      <div
-        style={{
-          color: "rgba(255,255,255,0.6)",
-          fontSize: 12,
-        }}
-      >
-        {description}
-      </div>
+      <div className="text-white/60 text-xs">{description}</div>
     </div>
   );
 }

@@ -1,4 +1,11 @@
-import { PiX, PiBackspace, PiTrash, PiPlus, PiStop, PiDownloadSimple } from "react-icons/pi";
+import {
+  PiX,
+  PiBackspace,
+  PiTrash,
+  PiPlus,
+  PiStop,
+  PiDownloadSimple,
+} from "react-icons/pi";
 import { formatBytes, iconButton, primaryButton } from "./OfflineShared";
 
 export function CreateView({
@@ -41,47 +48,18 @@ export function CreateView({
   return (
     <>
       {/* Top status bar */}
-      <div
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          right: 16,
-          background: "rgba(17, 24, 39, 0.94)",
-          borderRadius: 16,
-          padding: "10px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          zIndex: 20,
-        }}
-      >
-        <button aria-label="Back" onClick={onBack} style={iconButton}>
-          <PiX
-            size={20}
-            color="#fff"
-            style={{ display: "block", flexShrink: 0 }}
-          />
+      <div className="absolute top-4 left-4 right-4 bg-dark-900/94 rounded-2xl p-3 flex items-center gap-2 z-20">
+        <button aria-label="Back" onClick={onBack} className={iconButton}>
+          <PiX size={20} className="flex-shrink-0" />
         </button>
-        <div style={{ flex: 1, textAlign: "center" }}>
-          <div
-            style={{
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: 0.4,
-              textTransform: "uppercase",
-            }}
-          >
+        <div className="flex-1 text-center">
+          <div className="text-white text-xs font-black uppercase tracking-wider">
             New offline area
           </div>
           <div
-            style={{
-              color: selfIntersecting ? "#fca5a5" : "#d1d5db",
-              fontSize: 12,
-              fontWeight: 600,
-              marginTop: 2,
-            }}
+            className={`text-xs font-semibold mt-0.5 ${
+              selfIntersecting ? "text-red-300" : "text-gray-300"
+            }`}
           >
             {status}
           </div>
@@ -90,31 +68,21 @@ export function CreateView({
           aria-label="Remove last point"
           disabled={polygon.length === 0 || downloading}
           onClick={onUndo}
-          style={{
-            ...iconButton,
-            opacity: polygon.length === 0 || downloading ? 0.35 : 1,
-          }}
+          className={`${iconButton} ${
+            polygon.length === 0 || downloading ? "opacity-35" : ""
+          }`}
         >
-          <PiBackspace
-            size={20}
-            color="#fff"
-            style={{ display: "block", flexShrink: 0 }}
-          />
+          <PiBackspace size={20} className="flex-shrink-0" />
         </button>
         <button
           aria-label="Clear"
           disabled={polygon.length === 0 || downloading}
           onClick={onClear}
-          style={{
-            ...iconButton,
-            opacity: polygon.length === 0 || downloading ? 0.35 : 1,
-          }}
+          className={`${iconButton} ${
+            polygon.length === 0 || downloading ? "opacity-35" : ""
+          }`}
         >
-          <PiTrash
-            size={18}
-            color="#fff"
-            style={{ display: "block", flexShrink: 0 }}
-          />
+          <PiTrash size={18} className="flex-shrink-0" />
         </button>
       </div>
 
@@ -123,60 +91,20 @@ export function CreateView({
         <button
           aria-label="Add point"
           onClick={onAdd}
-          style={{
-            position: "absolute",
-            right: 20,
-            bottom: 132,
-            width: 56,
-            height: 56,
-            borderRadius: 18,
-            background: "#f97316",
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 3px 6px rgba(0,0,0,0.25)",
-            zIndex: 20,
-          }}
+          className="absolute right-5 bottom-[132px] w-14 h-14 rounded-lg bg-accent text-white flex items-center justify-center shadow-lg z-20 hover:bg-accent-light transition-colors"
         >
-          <PiPlus
-            size={32}
-            color="#fff"
-            style={{ display: "block", flexShrink: 0 }}
-          />
+          <PiPlus size={32} className="flex-shrink-0" />
         </button>
       ) : null}
 
       {/* Bottom action bar */}
-      <div
-        style={{
-          position: "absolute",
-          left: 16,
-          right: 16,
-          bottom: 36,
-          background: "rgba(17, 24, 39, 0.94)",
-          borderRadius: 16,
-          padding: 12,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          zIndex: 20,
-        }}
-      >
+      <div className="absolute left-4 right-4 bottom-9 bg-dark-900/94 rounded-2xl p-3 flex flex-col gap-2.5 z-20">
         {progress && downloading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                borderRadius: 4,
-                height: 6,
-                overflow: "hidden",
-              }}
-            >
+          <div className="flex flex-col gap-1.5">
+            <div className="bg-white/12 rounded h-1.5 overflow-hidden">
               <div
+                className="bg-accent h-full transition-all duration-100"
                 style={{
-                  background: "#f97316",
-                  height: "100%",
                   width: `${
                     progress.total
                       ? Math.min(
@@ -187,28 +115,14 @@ export function CreateView({
                         )
                       : 0
                   }%`,
-                  transition: "width 0.1s linear",
                 }}
               />
             </div>
-            <div
-              style={{
-                color: "#d1d5db",
-                fontSize: 12,
-                textAlign: "center",
-              }}
-            >
+            <div className="text-gray-300 text-xs text-center">
               {progress.completed + progress.failed}/{progress.total}
               {progress.failed > 0 ? ` (${progress.failed} failed)` : ""}
             </div>
-            <div
-              style={{
-                color: "#6b7280",
-                fontSize: 11,
-                textAlign: "center",
-                fontStyle: "italic",
-              }}
-            >
+            <div className="text-gray-500 text-xs text-center italic">
               You can go back — the download continues in the background.
             </div>
           </div>
@@ -217,30 +131,20 @@ export function CreateView({
         {downloading ? (
           <button
             onClick={onCancelDownload}
-            style={{ ...primaryButton, background: "#374151" }}
+            className={`${primaryButton} bg-gray-600 hover:bg-gray-700`}
           >
-            <PiStop
-              size={18}
-              color="#fff"
-              style={{ display: "block", flexShrink: 0 }}
-            />
+            <PiStop size={18} className="flex-shrink-0" />
             <span>Stop download</span>
           </button>
         ) : (
           <button
             disabled={!canDownload}
             onClick={onDownload}
-            style={{
-              ...primaryButton,
-              background: "#f97316",
-              opacity: canDownload ? 1 : 0.4,
-            }}
+            className={`${primaryButton} ${
+              !canDownload ? "opacity-40 cursor-not-allowed" : ""
+            }`}
           >
-            <PiDownloadSimple
-              size={18}
-              color="#fff"
-              style={{ display: "block", flexShrink: 0 }}
-            />
+            <PiDownloadSimple size={18} className="flex-shrink-0" />
             <span>Download</span>
           </button>
         )}

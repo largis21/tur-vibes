@@ -15,24 +15,13 @@ export function PermissionsSection({
 }: PermissionsSectionProps) {
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
-            Location
-          </div>
+      <div className="flex items-center gap-3 justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-sm font-bold">Location</div>
           <div
-            style={{
-              color: location === "denied" ? "#fca5a5" : "#9ca3af",
-              fontSize: 12,
-              marginTop: 2,
-            }}
+            className={`text-xs mt-0.5 ${
+              location === "denied" ? "text-red-300" : "text-gray-400"
+            }`}
           >
             {location === "denied"
               ? "Denied — re-enable in browser settings if the toggle won't grant."
@@ -45,24 +34,13 @@ export function PermissionsSection({
         />
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
-            Compass
-          </div>
+      <div className="flex items-center gap-3 justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-sm font-bold">Compass</div>
           <div
-            style={{
-              color: orientation === "denied" ? "#fca5a5" : "#9ca3af",
-              fontSize: 12,
-              marginTop: 2,
-            }}
+            className={`text-xs mt-0.5 ${
+              orientation === "denied" ? "text-red-300" : "text-gray-400"
+            }`}
           >
             {orientation === "denied"
               ? "Denied — re-enable in browser settings if the toggle won't grant."

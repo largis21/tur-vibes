@@ -12,20 +12,13 @@ export function TerrainViewModalContent({
   peakfinderUrl.searchParams.set("lng", point.longitude.toString());
 
   return (
-    <div
-      style={{
-        height: "70vh",
-        marginTop: "8px",
-        marginLeft: "-24px",
-        marginRight: "-24px",
-      }}
-    >
+    <div className="h-[70vh] mt-2 -mx-6">
       <iframe
         src={peakfinderUrl.toString()}
         frameBorder="0"
         width="100%"
         height="100%"
-        style={{ border: "none", borderRadius: "8px" }}
+        className="border-0 rounded-lg"
         title="PeakFinder Panorama"
       />
     </div>

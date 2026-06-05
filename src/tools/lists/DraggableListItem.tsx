@@ -60,37 +60,23 @@ export function DraggableListItem({
   return (
     <div
       ref={drop}
+      className={`flex items-center gap-1.5 px-1.5 py-1 rounded-lg border transition-all duration-150 select-none touch-pan-y ${
+        isOver
+          ? "bg-blue-600/20 border-blue-500"
+          : "bg-white/5 border-transparent"
+      }`}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "4px 6px",
-        background: isOver
-          ? "rgba(59, 130, 246, 0.2)"
-          : "rgba(255,255,255,0.05)",
-        borderRadius: 8,
-        border: isOver
-          ? "1px solid rgb(59, 130, 246)"
-          : "1px solid transparent",
         opacity: isDragging ? 0.6 : 1,
-        transition: "all 0.15s ease-in-out",
-        userSelect: "none",
         WebkitUserSelect: "none",
-        touchAction: "pan-y",
       }}
     >
       <div
         ref={drag}
+        className="flex items-center justify-center cursor-grab flex-shrink-0 select-none"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "grab",
           padding: "8px 0px",
-          flexShrink: 0,
           touchAction: "none",
           WebkitUserSelect: "none",
-          userSelect: "none",
         }}
       >
         <PiDotsSixVertical size={20} color="rgba(255,255,255,0.5)" />
@@ -99,10 +85,8 @@ export function DraggableListItem({
         type="checkbox"
         checked={checked}
         onChange={() => toggleItem(listId, itemId)}
+        className="w-4.5 h-4.5 cursor-pointer"
         style={{
-          width: 18,
-          height: 18,
-          cursor: "pointer",
           accentColor: "rgb(34, 197, 94)",
           touchAction: "auto",
         }}
@@ -117,25 +101,13 @@ export function DraggableListItem({
             if (e.key === "Escape") handleCancelEdit();
           }}
           autoFocus
-          style={{
-            flex: 1,
-            padding: "4px 8px",
-            borderRadius: 4,
-            border: "1px solid rgb(59, 130, 246)",
-            background: "rgba(59, 130, 246, 0.1)",
-            color: "#fff",
-            fontSize: 14,
-            outline: "none",
-          }}
+          className="flex-1 px-2 py-1 rounded border border-blue-500 bg-blue-600/10 text-white text-sm outline-none"
         />
       ) : (
         <span
-          style={{
-            flex: 1,
-            color: checked ? "rgba(255,255,255,0.4)" : "#fff",
-            textDecoration: checked ? "line-through" : "none",
-            fontSize: 14,
-          }}
+          className={`flex-1 text-sm ${
+            checked ? "text-white/40 line-through" : "text-white"
+          }`}
         >
           {text}
         </span>
@@ -143,38 +115,16 @@ export function DraggableListItem({
       {!isEditing && (
         <button
           onClick={() => setIsEditing(true)}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 4,
-            background: "rgba(59, 130, 246, 0.1)",
-            border: "none",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            padding: 0,
-            touchAction: "auto",
-          }}
+          className="w-9 h-9 rounded bg-blue-600/10 border-0 flex items-center justify-center cursor-pointer p-0 flex-shrink-0"
+          style={{ touchAction: "auto" }}
         >
           <PiPencil size={16} color="#93c5fd" />
         </button>
       )}
       <button
         onClick={() => deleteItem(listId, itemId)}
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 4,
-          background: "rgba(239, 68, 68, 0.1)",
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          padding: 0,
-          touchAction: "auto",
-        }}
+        className="w-9 h-9 rounded bg-red-600/10 border-0 flex items-center justify-center cursor-pointer p-0 flex-shrink-0"
+        style={{ touchAction: "auto" }}
       >
         <PiTrash size={16} color="#ef4444" />
       </button>

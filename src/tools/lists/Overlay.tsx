@@ -86,63 +86,26 @@ export function ListsOverlay() {
           selectList(null);
           deactivateTool();
         }}
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 10,
-          cursor: "pointer",
-        }}
+        className="absolute inset-0 z-10 cursor-pointer"
       />
       {/* Modal */}
-      <div
-        style={{
-          position: "absolute",
-          left: 16,
-          right: 16,
-          top: 16,
-          maxHeight: "70vh",
-          background: "rgba(17, 24, 39, 0.94)",
-          borderRadius: 16,
-          padding: 16,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          zIndex: 20,
-          overflow: "hidden",
-        }}
-      >
+      <div className="absolute left-4 right-4 top-4 max-h-[70vh] bg-dark-900/94 rounded-2xl p-4 flex flex-col gap-3 z-20 overflow-hidden">
         {selectedList ? (
           // List Details View
           <>
             {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => selectList(null)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: "rgba(255,255,255,0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                className="w-9 h-9 rounded-2xl bg-white/15 flex items-center justify-center border-0 cursor-pointer"
               >
                 <PiArrowLeft
                   size={20}
                   color="#fff"
-                  style={{ display: "block", flexShrink: 0 }}
+                  className="block flex-shrink-0"
                 />
               </button>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="flex-1 min-w-0">
                 {editingListName ? (
                   <input
                     type="text"
@@ -153,30 +116,12 @@ export function ListsOverlay() {
                       if (e.key === "Escape") handleCancelEditingListName();
                     }}
                     autoFocus
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      border: "1px solid rgb(59, 130, 246)",
-                      background: "rgba(59, 130, 246, 0.1)",
-                      color: "#fff",
-                      fontSize: 16,
-                      fontWeight: 800,
-                      outline: "none",
-                    }}
+                    className="w-full px-3 py-2 rounded-2 border-1 border-blue-500 bg-blue-600/10 text-white text-base font-black outline-none"
                   />
                 ) : (
                   <div
                     onClick={handleStartEditingListName}
-                    style={{
-                      color: "#fff",
-                      fontSize: 16,
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      transition: "background 0.2s",
-                    }}
+                    className="text-white text-base font-black cursor-pointer px-2 py-1 rounded transition-colors duration-200"
                     onMouseEnter={(e) =>
                       (e.currentTarget.style.background =
                         "rgba(255,255,255,0.1)")
@@ -194,23 +139,9 @@ export function ListsOverlay() {
                   selectList(null);
                   deactivateTool();
                 }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: "rgba(255,255,255,0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                className="w-9 h-9 rounded-2xl bg-white/15 flex items-center justify-center border-0 cursor-pointer"
               >
-                <PiX
-                  size={20}
-                  color="#fff"
-                  style={{ display: "block", flexShrink: 0 }}
-                />
+                <PiX size={20} color="#fff" className="block flex-shrink-0" />
               </button>
             </div>
 
