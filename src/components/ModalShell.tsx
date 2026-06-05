@@ -14,6 +14,7 @@ interface ModalShellProps {
   /** Allow the card body to scroll vertically. */
   scrollable?: boolean;
   zIndex?: number;
+  margin?: boolean;
 }
 
 export function ModalShell({

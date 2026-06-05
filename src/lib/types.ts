@@ -9,3 +9,10 @@ export type Region = {
   latitudeDelta: number;
   longitudeDelta: number;
 };
+
+export type ElevationGrid = {
+  center: LatLng;
+  radiusMeters: number;
+  gridSize: number;
+  points: Array<LatLng & { elevation: number | null }>;
+};

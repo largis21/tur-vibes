@@ -2,7 +2,8 @@ import { useState } from "react";
 import { usePointInfo } from "../lib/PointInfoContext";
 import { usePoi } from "../tools/poi/context";
 import { ModalShell } from "./ModalShell";
-import { PiMapPin } from "react-icons/pi";
+import { TerrainViewModalContent } from "./TerrainViewModal";
+import { PiMapPin, PiMountains, PiArrowLeft } from "react-icons/pi";
 
 function formatCoord(value: number) {
   return value.toFixed(5);
@@ -26,8 +27,14 @@ export function PointInfoModal() {
   } = usePointInfo();
   const { addPoi } = usePoi();
   const [saving, setSaving] = useState(false);
+  const [showTerrainView, setShowTerrainView] = useState(false);
 
   if (!point) return null;
+
+  function handleClose() {
+    setShowTerrainView(false);
+    close();
+  }
 
   async function handleSaveAsPoi() {
     if (!point) return;
@@ -45,88 +52,156 @@ export function PointInfoModal() {
   }
 
   return (
-    <ModalShell title="Point info" subtitle={placeName} onClose={close}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Stat
-          label="Coordinates"
-          value={`${formatCoord(point.latitude)}, ${formatCoord(point.longitude)}`}
-        />
-        <Stat
-          label="Elevation"
-          value={
-            loading
-              ? "…"
-              : info?.elevation != null
-                ? `${info.elevation.toFixed(0)} m`
-                : "–"
-          }
-        />
-        <Stat
-          label="Slope"
-          value={
-            loading
-              ? "…"
-              : info?.slopeDeg != null
-                ? `${info.slopeDeg.toFixed(1)}°`
-                : "–"
-          }
-        />
-        <Stat
-          label="Aspect"
-          value={
-            loading
-              ? "…"
-              : info?.aspectDeg != null
-                ? `${compassFromBearing(info.aspectDeg)} (${Math.round(info.aspectDeg)}°)`
-                : "–"
-          }
-          onClick={toggleAspectArrow}
-          isClickable={info?.aspectDeg != null && !loading}
-          isActive={showAspectArrow}
-        />
-      </div>
+    <ModalShell
+      title={showTerrainView ? "Terrain View" : "Point info"}
+      subtitle={showTerrainView ? `${point.latitude.toFixed(4)}°N, ${point.longitude.toFixed(4)}°E` : placeName}
+      onClose={handleClose}
+    >
+      {showTerrainView ? (
+        <>
+          <TerrainViewModalContent point={point} />
+          <button
+            onClick={() => setShowTerrainView(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              width: "100%",
+              marginTop: "12px",
+              padding: "11px 14px",
+              borderRadius: 12,
+              background: "rgba(107,114,128,0.15)",
+              border: "1px solid rgba(107,114,128,0.4)",
+              color: "#d1d5db",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <PiArrowLeft size={16} style={{ display: "block", flexShrink: 0 }} />
+            Back
+          </button>
+        </>
+      ) : (
+        <>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+          >
+          <Stat
+            label="Coordinates"
+            value={`${formatCoord(point.latitude)}, ${formatCoord(point.longitude)}`}
+          />
+          <Stat
+            label="Elevation"
+            value={
+              loading
+                ? "…"
+                : info?.elevation != null
+                  ? `${info.elevation.toFixed(0)} m`
+                  : "–"
+            }
+          />
+          <Stat
+            label="Slope"
+            value={
+              loading
+                ? "…"
+                : info?.slopeDeg != null
+                  ? `${info.slopeDeg.toFixed(1)}°`
+                  : "–"
+            }
+          />
+          <Stat
+            label="Aspect"
+            value={
+              loading
+                ? "…"
+                : info?.aspectDeg != null
+                  ? `${compassFromBearing(info.aspectDeg)} (${Math.round(info.aspectDeg)}°)`
+                  : "–"
+            }
+            onClick={toggleAspectArrow}
+            isClickable={info?.aspectDeg != null && !loading}
+            isActive={showAspectArrow}
+          />
+        </div>
 
-      {error ? (
+        {error ? (
+          <div
+            style={{
+              fontSize: 12,
+              color: "#fca5a5",
+              background: "rgba(220, 38, 38, 0.15)",
+              borderRadius: 8,
+              padding: "6px 8px",
+            }}
+          >
+            {error} — elevation requires an internet connection.
+          </div>
+        ) : null}
+
         <div
           style={{
-            fontSize: 12,
-            color: "#fca5a5",
-            background: "rgba(220, 38, 38, 0.15)",
-            borderRadius: 8,
-            padding: "6px 8px",
+            display: "flex",
+            gap: 8,
           }}
         >
-          {error} — elevation requires an internet connection.
-        </div>
-      ) : null}
+          <button
+            onClick={() => setShowTerrainView(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              flex: 1,
+              padding: "11px 14px",
+              borderRadius: 12,
+              background: "rgba(168,85,247,0.15)",
+              border: "1px solid rgba(168,85,247,0.4)",
+              color: "#d8b4fe",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <PiMountains
+              size={16}
+              style={{ display: "block", flexShrink: 0 }}
+            />
+            View from here
+          </button>
 
-      <button
-        onClick={handleSaveAsPoi}
-        disabled={saving}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          width: "100%",
-          padding: "11px 14px",
-          borderRadius: 12,
-          background: "rgba(59,130,246,0.15)",
-          border: "1px solid rgba(59,130,246,0.4)",
-          color: "#60a5fa",
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: saving ? "default" : "pointer",
-          opacity: saving ? 0.6 : 1,
-        }}
-      >
-        <PiMapPin
-          size={16}
-          color="#60a5fa"
-          style={{ display: "block", flexShrink: 0 }}
-        />
-        {saving ? "Saving…" : "Save as POI"}
-      </button>
+          <button
+            onClick={handleSaveAsPoi}
+            disabled={saving}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              flex: 1,
+              padding: "11px 14px",
+              borderRadius: 12,
+              background: "rgba(59,130,246,0.15)",
+              border: "1px solid rgba(59,130,246,0.4)",
+              color: "#60a5fa",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: saving ? "default" : "pointer",
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            <PiMapPin
+              size={16}
+              color="#60a5fa"
+              style={{ display: "block", flexShrink: 0 }}
+            />
+            {saving ? "Saving…" : "Save as POI"}
+          </button>
+          </div>
+        </>
+      )}
     </ModalShell>
   );
 }
