@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useMap } from "../../lib/MapContext";
+import { useActiveTool } from "../../lib/ActiveToolContext";
 import { useOffline } from "./context";
 import { ListView } from "./OfflineListView";
 import { CreateView } from "./OfflineCreateView";
@@ -7,7 +7,7 @@ import { CreateView } from "./OfflineCreateView";
 type Mode = "list" | "create";
 
 export function OfflineOverlay() {
-  const { deactivateTool } = useMap();
+  const { deactivateTool } = useActiveTool();
   const offline = useOffline();
   const {
     polygon,

@@ -1,21 +1,14 @@
-In offline maps tool
+Centralise storage keys
 
-- Improve selection box
-- Each "download" can be viewed with a button "Manage downloads"
-- Remove the old remove section logic
+Setup for Geo and Device Orientation
 
-Svalbard & Jan mayen
+Geo and Device orientation should both have their own context and hooks.
+When user first enters app, nothing should be subscribed to any of these API's, however each hook has:
 
-- Add npolar map tiles
-
-Navigation / drawing tool
-
-- Create a tool for setting a bearing, cross-bearing
-
-Coordsbox
-
-- When pressing coordsbox, show a "goto-modal" where the user can input coordinates and the cursor will go there
+- permission status (unknown, granted, denied) (Device orientation must be reset for every session)
+-
 
 Settings
 
-- change coordinate style
+- Check useEffects
+- getTitle, getSubtitle????

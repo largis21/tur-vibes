@@ -5,34 +5,35 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { safeGetItem, safeSetItem } from "../../lib/storage";
+import { STORAGE_KEYS, usePersistedState } from "../../lib/storage";
+import { z } from "zod";
 
-const STORAGE_KEY = "tur-vibes:lists";
+const ListItemSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  checked: z.boolean(),
+});
 
-export type ListItem = {
-  id: string;
-  text: string;
-  checked: boolean;
-};
+const ListSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(ListItemSchema),
+  createdAt: z.number(),
+});
 
-export type List = {
-  id: string;
-  name: string;
-  items: ListItem[];
-  createdAt: number;
-};
+export type ListItem = z.infer<typeof ListItemSchema>;
+export type List = z.infer<typeof ListSchema>;
 
-function loadLists(): List[] {
-  try {
-    const raw = safeGetItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as List[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLists(lists: List[]) {
-  safeSetItem(STORAGE_KEY, JSON.stringify(lists));
+function isListArray(value: unknown): value is List[] {
+  if (!Array.isArray(value)) return false;
+  return value.every((item) => {
+    try {
+      ListSchema.parse(item);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 type ListsContextValue = {
@@ -53,7 +54,9 @@ type ListsContextValue = {
 const ListsContext = createContext<ListsContextValue | null>(null);
 
 export function ListsProvider({ children }: { children: ReactNode }) {
-  const [lists, setLists] = useState<List[]>(loadLists);
+  const [lists, setLists] = usePersistedState<List[]>(STORAGE_KEYS.lists, [], {
+    validate: isListArray,
+  });
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
   const addList = useCallback(
@@ -65,142 +68,136 @@ export function ListsProvider({ children }: { children: ReactNode }) {
         items: [],
         createdAt: Date.now(),
       };
-      const updated = [...lists, newList];
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) => [...prev, newList]);
       setSelectedListId(id);
     },
-    [lists],
+    [setLists],
   );
 
   const deleteList = useCallback(
     (id: string) => {
-      const updated = lists.filter((list) => list.id !== id);
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) => prev.filter((list) => list.id !== id));
       if (selectedListId === id) {
         setSelectedListId(null);
       }
     },
-    [lists, selectedListId],
+    [setLists, selectedListId],
   );
 
   const renameList = useCallback(
     (id: string, name: string) => {
-      const updated = lists.map((list) =>
-        list.id === id ? { ...list, name } : list,
+      setLists((prev) =>
+        prev.map((list) => (list.id === id ? { ...list, name } : list)),
       );
-      setLists(updated);
-      saveLists(updated);
     },
-    [lists],
+    [setLists],
   );
 
   const addItem = useCallback(
     (listId: string, text: string) => {
-      const updated = lists.map((list) => {
-        if (list.id === listId) {
-          const itemId = `item-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          return {
-            ...list,
-            items: [...list.items, { id: itemId, text, checked: false }],
-          };
-        }
-        return list;
-      });
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) =>
+        prev.map((list) => {
+          if (list.id === listId) {
+            const itemId = `item-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            return {
+              ...list,
+              items: [...list.items, { id: itemId, text, checked: false }],
+            };
+          }
+          return list;
+        }),
+      );
     },
-    [lists],
+    [setLists],
   );
 
   const deleteItem = useCallback(
     (listId: string, itemId: string) => {
-      const updated = lists.map((list) => {
-        if (list.id === listId) {
-          return {
-            ...list,
-            items: list.items.filter((item) => item.id !== itemId),
-          };
-        }
-        return list;
-      });
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) =>
+        prev.map((list) => {
+          if (list.id === listId) {
+            return {
+              ...list,
+              items: list.items.filter((item) => item.id !== itemId),
+            };
+          }
+          return list;
+        }),
+      );
     },
-    [lists],
+    [setLists],
   );
 
   const toggleItem = useCallback(
     (listId: string, itemId: string) => {
-      const updated = lists.map((list) => {
-        if (list.id === listId) {
-          return {
-            ...list,
-            items: list.items.map((item) =>
-              item.id === itemId ? { ...item, checked: !item.checked } : item,
-            ),
-          };
-        }
-        return list;
-      });
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) =>
+        prev.map((list) => {
+          if (list.id === listId) {
+            return {
+              ...list,
+              items: list.items.map((item) =>
+                item.id === itemId ? { ...item, checked: !item.checked } : item,
+              ),
+            };
+          }
+          return list;
+        }),
+      );
     },
-    [lists],
+    [setLists],
   );
 
   const editItem = useCallback(
     (listId: string, itemId: string, text: string) => {
-      const updated = lists.map((list) => {
-        if (list.id === listId) {
-          return {
-            ...list,
-            items: list.items.map((item) =>
-              item.id === itemId ? { ...item, text } : item,
-            ),
-          };
-        }
-        return list;
-      });
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) =>
+        prev.map((list) => {
+          if (list.id === listId) {
+            return {
+              ...list,
+              items: list.items.map((item) =>
+                item.id === itemId ? { ...item, text } : item,
+              ),
+            };
+          }
+          return list;
+        }),
+      );
     },
-    [lists],
+    [setLists],
   );
 
   const reorderItems = useCallback(
     (listId: string, fromIndex: number, toIndex: number) => {
-      const updated = lists.map((list) => {
-        if (list.id === listId) {
-          const newItems = [...list.items];
-          const [removed] = newItems.splice(fromIndex, 1);
-          newItems.splice(toIndex, 0, removed);
-          return { ...list, items: newItems };
-        }
-        return list;
-      });
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) =>
+        prev.map((list) => {
+          if (list.id === listId) {
+            const newItems = [...list.items];
+            const [removed] = newItems.splice(fromIndex, 1);
+            newItems.splice(toIndex, 0, removed);
+            return { ...list, items: newItems };
+          }
+          return list;
+        }),
+      );
     },
-    [lists],
+    [setLists],
   );
 
   const resetListCheckmarks = useCallback(
     (listId: string) => {
-      const updated = lists.map((list) => {
-        if (list.id === listId) {
-          return {
-            ...list,
-            items: list.items.map((item) => ({ ...item, checked: false })),
-          };
-        }
-        return list;
-      });
-      setLists(updated);
-      saveLists(updated);
+      setLists((prev) =>
+        prev.map((list) => {
+          if (list.id === listId) {
+            return {
+              ...list,
+              items: list.items.map((item) => ({ ...item, checked: false })),
+            };
+          }
+          return list;
+        }),
+      );
     },
-    [lists],
+    [setLists],
   );
 
   const selectList = useCallback((id: string | null) => {

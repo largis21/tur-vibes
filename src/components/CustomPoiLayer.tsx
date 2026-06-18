@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type React from "react";
 import { Marker } from "react-map-gl/maplibre";
-import { useMap } from "../lib/MapContext";
+import { useMap, useMapRegion } from "../lib/MapContext";
 import { usePoi } from "../tools/poi/context";
 import { typeEmoji } from "../lib/poiEmoji";
 import type { CustomPoi } from "../tools/poi/context";
@@ -23,8 +23,15 @@ function poisInView(pois: CustomPoi[], region: Region) {
 
 import { usePointInfo } from "../lib/PointInfoContext";
 
+const DEFAULT_REGION: Region = {
+  latitude: 0,
+  longitude: 0,
+  latitudeDelta: 180,
+  longitudeDelta: 360,
+};
+
 export function CustomPoiLayer() {
-  const { mapRef, subscribeRegionChange } = useMap();
+  const { mapRef } = useMap();
   const { pois, selectPoi, poiFilter, movePoiLocation } = usePoi();
   const { point: pointInfoPoint, close: closePointInfo } = usePointInfo();
 
@@ -35,34 +42,10 @@ export function CustomPoiLayer() {
     lng: number;
   } | null>(null);
 
-  const [region, setRegion] = useState<Region>(() => {
-    const map = mapRef.current;
-    if (!map)
-      return {
-        latitude: 0,
-        longitude: 0,
-        latitudeDelta: 180,
-        longitudeDelta: 360,
-      };
-    const bounds = map.getBounds();
-    return {
-      latitude: (bounds.getNorth() + bounds.getSouth()) / 2,
-      longitude: (bounds.getEast() + bounds.getWest()) / 2,
-      latitudeDelta: bounds.getNorth() - bounds.getSouth(),
-      longitudeDelta: bounds.getEast() - bounds.getWest(),
-    };
-  });
-
-  const [zoom, setZoom] = useState<number>(
-    () => mapRef.current?.getZoom() ?? 10,
-  );
-
-  useEffect(() => {
-    return subscribeRegionChange((r) => {
-      setRegion(r);
-      setZoom(mapRef.current?.getZoom() ?? 10);
-    });
-  }, [subscribeRegionChange, mapRef]);
+  const region = useMapRegion<Region>((r) => r ?? DEFAULT_REGION);
+  // Zoom isn't carried in Region but the map ref is up-to-date by the time we
+  // get a region change; read it on each tick.
+  const zoom = useMapRegion<number>(() => mapRef.current?.getZoom() ?? 10);
 
   const detailed = zoom >= 11;
 

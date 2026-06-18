@@ -1,4 +1,10 @@
-import type { Feature, FeatureCollection, LineString, Point, Polygon } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  LineString,
+  Point,
+  Polygon,
+} from "geojson";
 import { useEffect, useMemo, useRef } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useMap } from "../../lib/MapContext";
@@ -9,7 +15,8 @@ const VERTEX_LAYER_ID = "offline-polygon-vertices";
 const HIT_TOLERANCE = 14;
 
 export function OfflineMapChildren() {
-  const { polygon, updatePolygonPoint, selfIntersecting, downloading } = useOffline();
+  const { polygon, updatePolygonPoint, selfIntersecting, downloading } =
+    useOffline();
   const { mapRef } = useMap();
   const polygonRef = useRef(polygon);
   polygonRef.current = polygon;
@@ -97,7 +104,7 @@ export function OfflineMapChildren() {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerEnd);
       window.removeEventListener("pointercancel", onPointerEnd);
-      mapRef.current?.dragPan.enable();
+      map.dragPan.enable();
     };
   }, [mapRef, updatePolygonPoint]);
 

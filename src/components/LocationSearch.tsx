@@ -122,6 +122,7 @@ export function LocationSearch({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   function handleSelect(result: StedResult) {

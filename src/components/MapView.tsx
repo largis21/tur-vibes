@@ -49,7 +49,7 @@ type MapViewProps = {
 };
 
 export function MapView({ activeToolId, children }: MapViewProps) {
-  const { mapRef, cursorCoordinate, regionListeners } = useMap();
+  const { mapRef, cursorCoordinate, _publishRegion } = useMap();
   const { showSteepness, steepnessOpacity } = useUiState();
   const {
     open: openPointInfo,
@@ -79,9 +79,9 @@ export function MapView({ activeToolId, children }: MapViewProps) {
         latitude: region.latitude,
         longitude: region.longitude,
       };
-      regionListeners.current.forEach((listener) => listener(region));
+      _publishRegion(region);
     },
-    [mapRef, cursorCoordinate, regionListeners],
+    [mapRef, cursorCoordinate, _publishRegion],
   );
 
   const handleMoveEnd = useCallback((event: ViewStateChangeEvent) => {
@@ -200,14 +200,14 @@ export function MapView({ activeToolId, children }: MapViewProps) {
           latitude: region.latitude,
           longitude: region.longitude,
         };
-        regionListeners.current.forEach((listener) => listener(region));
+        _publishRegion(region);
         setMapReady(true);
       } else {
         mapRef.current = null;
         setMapReady(false);
       }
     },
-    [mapRef, cursorCoordinate, regionListeners],
+    [mapRef, cursorCoordinate, _publishRegion],
   );
 
   return (

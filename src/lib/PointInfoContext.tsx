@@ -110,6 +110,7 @@ export function PointInfoProvider({ children }: { children: ReactNode }) {
       showAspectArrow,
       toggleAspectArrow,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [point, info, placeName, loading, error, showAspectArrow],
   );
 

@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useMap } from "../../lib/MapContext";
+import { useMap, useMapRegion } from "../../lib/MapContext";
 import type { LatLng } from "../../lib/types";
 
 type MarkerPosition = { x: number; y: number };
@@ -32,13 +32,18 @@ export function useMeasure(): MeasureContextValue {
 }
 
 export function MeasureProvider({ children }: { children: ReactNode }) {
-  const { mapRef, cursorCoordinate, subscribeRegionChange } = useMap();
+  const { mapRef, cursorCoordinate } = useMap();
   const [points, setPoints] = useState<LatLng[]>([]);
   const [markerPositions, setMarkerPositions] = useState<MarkerPosition[]>([]);
-  const [cursorPosition, setCursorPosition] = useState<LatLng>(() => ({
-    latitude: cursorCoordinate.current.latitude,
-    longitude: cursorCoordinate.current.longitude,
-  }));
+
+  // Re-render whenever the cursor (map center) lat/lon changes.
+  const cursorPosition = useMapRegion<LatLng>(
+    (region) => {
+      if (!region) return { ...cursorCoordinate.current };
+      return { latitude: region.latitude, longitude: region.longitude };
+    },
+    (a, b) => a.latitude === b.latitude && a.longitude === b.longitude,
+  );
 
   const updateMarkerPositions = useCallback(
     (nextPoints: LatLng[]) => {
@@ -56,16 +61,10 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
     [mapRef],
   );
 
+  // Re-project measurement markers whenever the map cursor moves.
   useEffect(() => {
-    return subscribeRegionChange(() => {
-      updateMarkerPositions(points);
-      // Also update cursor position when region changes
-      setCursorPosition({
-        latitude: cursorCoordinate.current.latitude,
-        longitude: cursorCoordinate.current.longitude,
-      });
-    });
-  }, [points, subscribeRegionChange, updateMarkerPositions, cursorCoordinate]);
+    updateMarkerPositions(points);
+  }, [cursorPosition, points, updateMarkerPositions]);
 
   const addPoint = useCallback(() => {
     setPoints((current) => {

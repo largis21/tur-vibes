@@ -2,12 +2,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import { safeGetItem, safeSetItem, STORAGE_KEYS } from "./storage";
+import { NUMBER_CODEC, STORAGE_KEYS, usePersistedState } from "./storage";
 
 type UiState = {
   showSteepness: boolean;
@@ -26,28 +25,31 @@ const UiStateContext = createContext<UiState | null>(null);
 
 const DEFAULT_STEEPNESS_OPACITY = 0.5;
 
-function loadSteepnessOpacity(): number {
-  const raw = safeGetItem(STORAGE_KEYS.steepnessOpacity);
-  if (raw == null) return DEFAULT_STEEPNESS_OPACITY;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return DEFAULT_STEEPNESS_OPACITY;
-  return Math.min(1, Math.max(0, parsed));
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
 export function UiStateProvider({ children }: { children: ReactNode }) {
   const [showSteepness, setShowSteepness] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [steepnessOpacity, setSteepnessOpacityState] = useState(() =>
-    loadSteepnessOpacity(),
+  const [steepnessOpacityRaw, setSteepnessOpacityRaw] =
+    usePersistedState<number>(
+      STORAGE_KEYS.steepnessOpacity,
+      DEFAULT_STEEPNESS_OPACITY,
+      {
+        codec: NUMBER_CODEC,
+        validate: (v): v is number =>
+          typeof v === "number" && Number.isFinite(v),
+      },
+    );
+  const steepnessOpacity = clamp01(steepnessOpacityRaw);
+
+  const setSteepnessOpacity = useCallback(
+    (value: number) => {
+      setSteepnessOpacityRaw(clamp01(value));
+    },
+    [setSteepnessOpacityRaw],
   );
-
-  const setSteepnessOpacity = useCallback((value: number) => {
-    setSteepnessOpacityState(Math.min(1, Math.max(0, value)));
-  }, []);
-
-  useEffect(() => {
-    safeSetItem(STORAGE_KEYS.steepnessOpacity, String(steepnessOpacity));
-  }, [steepnessOpacity]);
 
   const toggleSteepness = useCallback(() => setShowSteepness((v) => !v), []);
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
@@ -66,7 +68,16 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
       closeSidebar,
       toggleSidebar,
     }),
-    [showSteepness, steepnessOpacity, sidebarOpen],
+    [
+      showSteepness,
+      toggleSteepness,
+      steepnessOpacity,
+      setSteepnessOpacity,
+      sidebarOpen,
+      openSidebar,
+      closeSidebar,
+      toggleSidebar,
+    ],
   );
 
   return (

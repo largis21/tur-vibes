@@ -1,53 +1,22 @@
 import type { Feature, Point } from "geojson";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
-import { usePermissions } from "../lib/permissions";
-
-type Position = {
-  longitude: number;
-  latitude: number;
-  accuracy: number;
-};
+import { useGeoLocation } from "../state/geoLocation/useGeoLocation";
 
 export function UserLocation() {
-  const { location } = usePermissions();
-  const [position, setPosition] = useState<Position | null>(null);
-
-  useEffect(() => {
-    if (location !== "granted") {
-      setPosition(null);
-      return;
-    }
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-
-    const watchId = navigator.geolocation.watchPosition(
-      (p) => {
-        setPosition({
-          longitude: p.coords.longitude,
-          latitude: p.coords.latitude,
-          accuracy: p.coords.accuracy,
-        });
-      },
-      () => {
-        // Ignore errors (permission revoked at the OS level, etc.).
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [location]);
+  const userLocation = useGeoLocation((state) => state.userPosition);
 
   const point = useMemo<Feature<Point> | null>(() => {
-    if (!position) return null;
+    if (!userLocation) return null;
     return {
       type: "Feature",
-      properties: { accuracy: position.accuracy },
+      properties: { accuracy: userLocation.accuracy },
       geometry: {
         type: "Point",
-        coordinates: [position.longitude, position.latitude],
+        coordinates: [userLocation.longitude, userLocation.latitude],
       },
     };
-  }, [position]);
+  }, [userLocation]);
 
   if (!point) return null;
 

@@ -189,10 +189,10 @@ export default defineConfig({
   ],
   server: {
     host: true,
-    allowedHosts: ["mildly-epic-eel.ngrok-free.app"],
+    allowedHosts: ["mildly-epic-eel.ngrok-free.app", ".shares.zrok.io"],
   },
   preview: {
     port: 5173,
-    allowedHosts: ["mildly-epic-eel.ngrok-free.app"],
+    allowedHosts: ["mildly-epic-eel.ngrok-free.app", "*.shares.zrok.io"],
   },
 });

@@ -1,25 +1,23 @@
 import { PiCrosshair } from "react-icons/pi";
 import { FabButton } from "./FabButton";
 import { useMap } from "../lib/MapContext";
-import { usePermissions } from "../lib/permissions";
+import { useGeoLocation } from "../state/geoLocation/useGeoLocation";
 
 export function LocateButton() {
   const { mapRef } = useMap();
-  const { location } = usePermissions();
+  const getUserPosition = useGeoLocation((state) => state.getUserPosition);
 
-  function handleClick() {
-    if (location !== "granted") return;
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        mapRef.current?.flyTo({
-          center: [position.coords.longitude, position.coords.latitude],
-          duration: 500,
-        });
-      },
-      undefined,
-      { enableHighAccuracy: true, maximumAge: 5000 },
-    );
+  async function handleClick() {
+    const userPosition = await getUserPosition().catch((err) => {
+      console.error("Cannot fly to user location", err);
+    });
+
+    if (!userPosition) return;
+
+    mapRef.current?.flyTo({
+      center: [userPosition.longitude, userPosition.latitude],
+      duration: 500,
+    });
   }
 
   return (

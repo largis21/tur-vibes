@@ -82,6 +82,12 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [regionSizes, setRegionSizes] = useState<Record<string, number>>({});
   const handleRef = useRef<DownloadHandle | null>(null);
 
+  // Define the public setter early so it can be used in effects below.
+  const setOfflineMode = useCallback((enabled: boolean) => {
+    setOfflineModeState(enabled);
+    saveOfflineMode(enabled);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     getOfflineTilesSize().then((b) => {
@@ -95,15 +101,14 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   // Automatically enable offline mode when the browser goes offline
   useEffect(() => {
     const handleOffline = () => {
-      setOfflineModeState(true);
-      saveOfflineMode(true);
+      setOfflineMode(true);
     };
 
     window.addEventListener("offline", handleOffline);
     return () => {
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [setOfflineMode]);
 
   // Recompute per-region sizes whenever the saved-region list changes or a
   // download finishes (storageBytes acts as a proxy for "tile contents may
@@ -224,11 +229,6 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     },
     [savedRegions],
   );
-
-  const setOfflineMode = useCallback((enabled: boolean) => {
-    setOfflineModeState(enabled);
-    saveOfflineMode(enabled);
-  }, []);
 
   const value = useMemo<OfflineContextValue>(
     () => ({

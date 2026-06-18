@@ -1,22 +1,12 @@
 import { useState, useEffect } from "react";
-import { useMap } from "../../lib/MapContext";
-import { PiShieldCheck, PiHardDrive } from "react-icons/pi";
+import { useActiveTool } from "../../lib/ActiveToolContext";
 import { ModalShell } from "../../components/ui/ModalShell";
-import { usePermissions } from "../../lib/permissions";
-import { PermissionsSection } from "./PermissionsSection";
+
 import { DataSection } from "./DataSection";
 import { DeveloperSection } from "./DeveloperSection";
-import { SettingsMenuButton } from "./settingsComponents";
 
 export function SettingsOverlay() {
-  const { deactivateTool } = useMap();
-  const {
-    location,
-    orientation,
-    setLocation,
-    setOrientation,
-    refreshPermissions,
-  } = usePermissions();
+  const { deactivateTool } = useActiveTool();
   const [storageEstimate, setStorageEstimate] = useState<{
     usage: number;
     quota: number;
@@ -24,10 +14,6 @@ export function SettingsOverlay() {
   const [selectedSection, setSelectedSection] = useState<
     "permissions" | "data" | null
   >(null);
-
-  useEffect(() => {
-    void refreshPermissions();
-  }, [refreshPermissions]);
 
   useEffect(() => {
     async function getStorageEstimate() {
@@ -68,39 +54,8 @@ export function SettingsOverlay() {
       scrollable
       zIndex={20}
     >
-      {!selectedSection ? (
-        // Menu View
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SettingsMenuButton
-            icon={PiShieldCheck}
-            label="Permissions"
-            onClick={() => setSelectedSection("permissions")}
-          />
-
-          <SettingsMenuButton
-            icon={PiHardDrive}
-            label="Data"
-            onClick={() => setSelectedSection("data")}
-          />
-
-          <div style={{ marginTop: 12 }}>
-            <DeveloperSection />
-          </div>
-        </div>
-      ) : selectedSection === "permissions" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <PermissionsSection
-            location={location}
-            orientation={orientation}
-            onLocationChange={(v) => void setLocation(v)}
-            onOrientationChange={(v) => void setOrientation(v)}
-          />
-        </div>
-      ) : selectedSection === "data" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <DataSection storageEstimate={storageEstimate} />
-        </div>
-      ) : null}
+      <DataSection storageEstimate={storageEstimate} />
+      <DeveloperSection />
     </ModalShell>
   );
 }

@@ -1,81 +1,28 @@
-import { useEffect, useState } from "react";
-import { useMap } from "../lib/MapContext";
-import { usePermissions } from "../lib/permissions";
-import { fetchElevations } from "../lib/elevation";
+import { useState } from "react";
+import { useMap, useMapRegion } from "../lib/MapContext";
 import type { LatLng } from "../lib/types";
 import { GotoModal } from "./GotoModal";
+import { useGeoLocation } from "../state/geoLocation/useGeoLocation";
 
-function formatCoord(coord: LatLng | null) {
+function formatCoord(coord: (LatLng & { accuracy?: number }) | null) {
   if (!coord) return "—";
-  return `${coord.latitude.toFixed(5)}, ${coord.longitude.toFixed(5)}`;
+  return `${coord.latitude.toFixed(5)}, ${coord.longitude.toFixed(5)}${coord.accuracy ? ` (±${Math.round(coord.accuracy)}m)` : ""}`;
 }
 
 export function CoordsBox() {
-  const { cursorCoordinate, subscribeRegionChange, mapRef } = useMap();
-  const { location } = usePermissions();
-  const [cursor, setCursor] = useState<LatLng>(cursorCoordinate.current);
-  const [user, setUser] = useState<LatLng | null>(null);
-  const [userElevation, setUserElevation] = useState<number | null>(null);
-  const [gpsAltitude, setGpsAltitude] = useState<number | null>(null);
-  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const { cursorCoordinate, mapRef } = useMap();
+  const userPosition = useGeoLocation((state) => state.userPosition);
+
+  // Derive just the lat/lon from the map's Region — re-renders only when
+  // those numbers change.
+  const cursor = useMapRegion<LatLng>(
+    (region) => {
+      if (!region) return cursorCoordinate.current;
+      return { latitude: region.latitude, longitude: region.longitude };
+    },
+    (a, b) => a.latitude === b.latitude && a.longitude === b.longitude,
+  );
   const [gotoOpen, setGotoOpen] = useState(false);
-
-  useEffect(() => {
-    return subscribeRegionChange((region) => {
-      setCursor({ latitude: region.latitude, longitude: region.longitude });
-    });
-  }, [subscribeRegionChange]);
-
-  useEffect(() => {
-    if (location !== "granted") {
-      setUser(null);
-      setUserElevation(null);
-      setGpsAltitude(null);
-      setAccuracy(null);
-      return;
-    }
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-
-    let elevationTimeoutId: number | null = null;
-    let elevationCtrl: AbortController | null = null;
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const userLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        setUser(userLocation);
-        setGpsAltitude(position.coords.altitude);
-        setAccuracy(position.coords.accuracy);
-
-        // Debounce elevation fetches to avoid spamming the API
-        if (elevationTimeoutId !== null) clearTimeout(elevationTimeoutId);
-        if (elevationCtrl) elevationCtrl.abort();
-
-        elevationCtrl = new AbortController();
-        elevationTimeoutId = window.setTimeout(() => {
-          fetchElevations([userLocation], elevationCtrl!.signal)
-            .then((elevations) => {
-              if (!elevationCtrl!.signal.aborted) {
-                setUserElevation(elevations[0] ?? null);
-              }
-            })
-            .catch(() => {
-              /* ignore cancellations and errors */
-            });
-          elevationTimeoutId = null;
-        }, 2000); // Only fetch elevation every 2 seconds max
-      },
-      undefined,
-      { enableHighAccuracy: false, maximumAge: 5000 },
-    );
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-      if (elevationTimeoutId !== null) clearTimeout(elevationTimeoutId);
-      if (elevationCtrl) elevationCtrl.abort();
-    };
-  }, [location]);
 
   return (
     <>
@@ -86,15 +33,9 @@ export function CoordsBox() {
         className="absolute left-4 bottom-9 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left"
       >
         <Row label="Cursor" value={formatCoord(cursor)} />
-        <Row
-          label="You"
-          value={formatCoord(user)}
-          elevation={userElevation}
-          gpsAltitude={gpsAltitude}
-          accuracy={accuracy}
-        />
+        <Row label="You" value={formatCoord(userPosition)} />
       </button>
-      {gotoOpen ? (
+      {gotoOpen && (
         <GotoModal
           initial={cursor}
           onClose={() => setGotoOpen(false)}
@@ -106,43 +47,20 @@ export function CoordsBox() {
             setGotoOpen(false);
           }}
         />
-      ) : null}
+      )}
     </>
   );
 }
 
-function Row({
-  label,
-  value,
-  elevation,
-  gpsAltitude,
-  accuracy,
-}: {
-  label: string;
-  value: string;
-  elevation?: number | null;
-  gpsAltitude?: number | null;
-  accuracy?: number | null;
-}) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
       <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
         {label}
       </span>
-      <span className="text-white font-mono text-xs font-medium">{value}</span>
-      {gpsAltitude !== null && gpsAltitude !== undefined && (
-        <span className="text-white font-mono text-xs font-normal mt-0.5">
-          GPS: {Math.round(gpsAltitude)} m
-          {accuracy !== null &&
-            accuracy !== undefined &&
-            ` (±${Math.round(accuracy)}m)`}
-        </span>
-      )}
-      {elevation !== null && elevation !== undefined && (
-        <span className="text-white font-mono text-xs font-normal mt-0.5">
-          Terrain: {Math.round(elevation)} m
-        </span>
-      )}
+      <span className="text-white font-mono text-xs font-medium leading-normal">
+        {value}
+      </span>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
 import { HeaderShell } from "../../components/ui/HeaderShell";
 import { FabButton } from "../../components/FabButton";
 import { useMap } from "../../lib/MapContext";
+import { useActiveTool } from "../../lib/ActiveToolContext";
 import { usePoi } from "./context";
 import { typeEmoji } from "../../lib/poiEmoji";
 
@@ -43,7 +44,8 @@ function haversineKm(
 }
 
 export function PoiOverlay() {
-  const { deactivateTool, cursorCoordinate, mapRef } = useMap();
+  const { deactivateTool } = useActiveTool();
+  const { cursorCoordinate, mapRef } = useMap();
   const {
     pois,
     addPoi,

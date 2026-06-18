@@ -1,28 +1,14 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import type { Map as MapLibreMap } from "maplibre-gl";
+import { type ReactNode } from "react";
 
 import { Crosshair } from "./components/Crosshair";
 import { DefaultUi } from "./components/DefaultUi";
 import { MapView } from "./components/MapView";
 import { OfflineModeBanner } from "./components/OfflineModeBanner";
-import { OnboardingModal } from "./components/OnboardingModal";
 import { PointInfoModal } from "./components/PointInfoModal";
 import { Sidebar } from "./components/Sidebar";
-import {
-  MapContextProvider,
-  type MapContextValue,
-  type RegionChangeListener,
-} from "./lib/MapContext";
+import { ActiveToolProvider, useActiveTool } from "./lib/ActiveToolContext";
+import { MapContextProvider } from "./lib/MapContext";
 import { registerOfflineProtocols } from "./lib/offlineTiles";
-import { OnboardingProvider } from "./lib/OnboardingContext";
-import { PermissionsProvider } from "./lib/permissions";
 import { loadLastRegion } from "./lib/persistedRegion";
 import { PeakProvider } from "./lib/PeakContext";
 import { PeakInfoModal } from "./components/PeakInfoModal";
@@ -32,11 +18,11 @@ import type { LatLng } from "./lib/types";
 import { UiStateProvider, useUiState } from "./lib/UiState";
 import { useOffline } from "./tools/offline/context";
 import { getActiveTool, tools } from "./tools/registry";
-import { useNavigation } from "./tools/navigation/context";
+import { GeoLocationProvider } from "./state/geoLocation/GeoLocationContext";
 
 registerOfflineProtocols();
 
-const FALLBACK_COORD: LatLng = { latitude: 60.3913, longitude: 5.3221 };
+const FALLBACK_COORD: LatLng = { latitude: 65.3913, longitude: 5.3221 };
 
 function ToolProviders({ children }: { children: ReactNode }) {
   return tools.reduceRight<ReactNode>((acc, tool) => {
@@ -47,86 +33,34 @@ function ToolProviders({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  const mapRef = useRef<MapLibreMap | null>(null);
   const initial = loadLastRegion();
-  const cursorCoordinate = useRef<LatLng>(
-    initial
-      ? { latitude: initial.latitude, longitude: initial.longitude }
-      : FALLBACK_COORD,
-  );
-  const regionListeners = useRef(new Set<RegionChangeListener>());
-
-  const subscribeRegionChange = useCallback(
-    (listener: RegionChangeListener) => {
-      regionListeners.current.add(listener);
-      return () => {
-        regionListeners.current.delete(listener);
-      };
-    },
-    [],
-  );
-
-  const [activeToolId, setActiveToolId] = useState<string | null>(null);
-  const deactivateTool = useCallback(() => setActiveToolId(null), []);
-
-  const [userPosition, setUserPosition] = useState<LatLng | null>(null);
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (p) =>
-        setUserPosition({
-          latitude: p.coords.latitude,
-          longitude: p.coords.longitude,
-        }),
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
-
-  const mapContextValue = useMemo<MapContextValue>(
-    () => ({
-      mapRef,
-      cursorCoordinate,
-      regionListeners,
-      subscribeRegionChange,
-      deactivateTool,
-      userPosition,
-    }),
-    [subscribeRegionChange, deactivateTool, userPosition],
-  );
+  const initialCursor: LatLng = initial
+    ? { latitude: initial.latitude, longitude: initial.longitude }
+    : FALLBACK_COORD;
 
   return (
-    <MapContextProvider value={mapContextValue}>
-      <OnboardingProvider>
-        <PermissionsProvider>
+    <GeoLocationProvider>
+      <MapContextProvider initialCursor={initialCursor}>
+        <ActiveToolProvider>
           <UiStateProvider>
             <PointInfoProvider>
               <PeakProvider>
                 <ToolProviders>
-                  <AppContent
-                    activeToolId={activeToolId}
-                    setActiveToolId={setActiveToolId}
-                  />
+                  <AppContent />
                 </ToolProviders>
               </PeakProvider>
             </PointInfoProvider>
           </UiStateProvider>
-        </PermissionsProvider>
-      </OnboardingProvider>
-    </MapContextProvider>
+        </ActiveToolProvider>
+      </MapContextProvider>
+    </GeoLocationProvider>
   );
 }
 
-type AppContentProps = {
-  activeToolId: string | null;
-  setActiveToolId: React.Dispatch<React.SetStateAction<string | null>>;
-};
-
-function AppContent({ activeToolId, setActiveToolId }: AppContentProps) {
+function AppContent() {
+  const { activeToolId, setActiveToolId, toggleTool } = useActiveTool();
   const { sidebarOpen, closeSidebar } = useUiState();
   const { offlineMode } = useOffline();
-  const { tracking: navTracking } = useNavigation();
   const activeTool = getActiveTool(activeToolId);
   const isDefaultTool = activeToolId === null;
   const MapChildren = activeTool.MapChildren;
@@ -134,7 +68,7 @@ function AppContent({ activeToolId, setActiveToolId }: AppContentProps) {
   const defaultUi = activeTool.defaultUi ?? [];
 
   function handleSelectTool(id: string) {
-    setActiveToolId((current) => (current === id ? null : id));
+    toggleTool(id);
     closeSidebar();
   }
 
@@ -149,8 +83,7 @@ function AppContent({ activeToolId, setActiveToolId }: AppContentProps) {
         keys={defaultUi}
         bannerVisible={isDefaultTool && offlineMode}
         compassTopOffset={
-          (activeTool.id === "navigation" && !navTracking) ||
-          activeTool.id === "poi"
+          activeTool.id === "poi" // TODO move to tool def
             ? 88
             : undefined
         }
@@ -163,7 +96,6 @@ function AppContent({ activeToolId, setActiveToolId }: AppContentProps) {
       <PeakInfoModal />
       <CustomPoiCard />
       <PointInfoModal />
-      <OnboardingModal />
       <Sidebar
         isOpen={sidebarOpen}
         tools={tools}

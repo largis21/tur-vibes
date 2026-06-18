@@ -6,32 +6,32 @@ import {
   type ReactNode,
 } from "react";
 import { fetchNearestPlaceName, fetchElevations } from "../../lib/elevation";
-import { safeGetItem, safeSetItem } from "../../lib/storage";
+import { STORAGE_KEYS, usePersistedState } from "../../lib/storage";
+import { z } from "zod";
 
-const STORAGE_KEY = "tur-vibes:custom-pois";
+const CustomPoiSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  locationType: z.string().nullable(),
+  color: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  elevation: z.number().nullable(),
+  createdAt: z.number(),
+});
 
-export type CustomPoi = {
-  id: string;
-  name: string;
-  locationType: string | null;
-  color: string;
-  lat: number;
-  lng: number;
-  elevation: number | null;
-  createdAt: number;
-};
+export type CustomPoi = z.infer<typeof CustomPoiSchema>;
 
-function loadPois(): CustomPoi[] {
-  try {
-    const raw = safeGetItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CustomPoi[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function savePois(pois: CustomPoi[]) {
-  safeSetItem(STORAGE_KEY, JSON.stringify(pois));
+function isCustomPoiArray(value: unknown): value is CustomPoi[] {
+  if (!Array.isArray(value)) return false;
+  return value.every((item) => {
+    try {
+      CustomPoiSchema.parse(item);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 export type PoiFilter = {
@@ -60,7 +60,11 @@ type PoiContextValue = {
 const PoiContext = createContext<PoiContextValue | null>(null);
 
 export function PoiProvider({ children }: { children: ReactNode }) {
-  const [pois, setPois] = useState<CustomPoi[]>(loadPois);
+  const [pois, setPois] = usePersistedState<CustomPoi[]>(
+    STORAGE_KEYS.customPois,
+    [],
+    { validate: isCustomPoiArray },
+  );
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [poiFilter, setPoiFilter] = useState<PoiFilter>({
     types: [],
@@ -72,7 +76,6 @@ export function PoiProvider({ children }: { children: ReactNode }) {
   const addPoi = useCallback(
     async (poi: Omit<CustomPoi, "id" | "createdAt" | "name">) => {
       const id = `poi-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      // Insert with a placeholder name immediately so the dot appears at once.
       const placeholder: CustomPoi = {
         ...poi,
         id,
@@ -82,11 +85,7 @@ export function PoiProvider({ children }: { children: ReactNode }) {
         elevation: poi.elevation ?? null,
         createdAt: Date.now(),
       };
-      setPois((prev) => {
-        const updated = [...prev, placeholder];
-        savePois(updated);
-        return updated;
-      });
+      setPois((prev) => [...prev, placeholder]);
       setSelectedPoiId(id);
       // Resolve a real name from the location API and fetch elevation, then patch.
       const [resolved, elevations] = await Promise.all([
@@ -101,54 +100,45 @@ export function PoiProvider({ children }: { children: ReactNode }) {
       const name = resolved?.name ?? "New POI";
       const locationType = resolved?.type ?? null;
       const elevation = elevations[0] ?? null;
-      setPois((prev) => {
-        const updated = prev.map((p) =>
+      setPois((prev) =>
+        prev.map((p) =>
           p.id === id ? { ...p, name, locationType, elevation } : p,
-        );
-        savePois(updated);
-        return updated;
-      });
+        ),
+      );
     },
-    [],
+    [setPois],
   );
 
-  const removePoi = useCallback((id: string) => {
-    setPois((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      savePois(updated);
-      return updated;
-    });
-    setSelectedPoiId((cur) => (cur === id ? null : cur));
-  }, []);
+  const removePoi = useCallback(
+    (id: string) => {
+      setPois((prev) => prev.filter((p) => p.id !== id));
+      setSelectedPoiId((cur) => (cur === id ? null : cur));
+    },
+    [setPois],
+  );
 
-  const renamePoi = useCallback((id: string, name: string) => {
-    setPois((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, name } : p));
-      savePois(updated);
-      return updated;
-    });
-  }, []);
+  const renamePoi = useCallback(
+    (id: string, name: string) => {
+      setPois((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
+    },
+    [setPois],
+  );
 
   const changePoiType = useCallback(
     (id: string, locationType: string | null) => {
-      setPois((prev) => {
-        const updated = prev.map((p) =>
-          p.id === id ? { ...p, locationType } : p,
-        );
-        savePois(updated);
-        return updated;
-      });
+      setPois((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, locationType } : p)),
+      );
     },
-    [],
+    [setPois],
   );
 
-  const changePoiColor = useCallback((id: string, color: string) => {
-    setPois((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, color } : p));
-      savePois(updated);
-      return updated;
-    });
-  }, []);
+  const changePoiColor = useCallback(
+    (id: string, color: string) => {
+      setPois((prev) => prev.map((p) => (p.id === id ? { ...p, color } : p)));
+    },
+    [setPois],
+  );
 
   const selectPoi = useCallback((id: string | null) => {
     setSelectedPoiId(id);
@@ -157,27 +147,21 @@ export function PoiProvider({ children }: { children: ReactNode }) {
   const movePoiLocation = useCallback(
     async (id: string, lat: number, lng: number) => {
       // Update coords immediately
-      setPois((prev) => {
-        const updated = prev.map((p) =>
+      setPois((prev) =>
+        prev.map((p) =>
           p.id === id ? { ...p, lat, lng, elevation: null } : p,
-        );
-        savePois(updated);
-        return updated;
-      });
+        ),
+      );
       // Fetch new elevation
       const elevations = await fetchElevations([
         { latitude: lat, longitude: lng },
       ]).catch(() => [null]);
       const elevation = elevations[0] ?? null;
-      setPois((prev) => {
-        const updated = prev.map((p) =>
-          p.id === id ? { ...p, elevation } : p,
-        );
-        savePois(updated);
-        return updated;
-      });
+      setPois((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, elevation } : p)),
+      );
     },
-    [],
+    [setPois],
   );
 
   return (

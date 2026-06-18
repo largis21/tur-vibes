@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { formatDistance, getTotalDistanceMeters } from "../../lib/geo";
-import { useMap } from "../../lib/MapContext";
+import { useActiveTool } from "../../lib/ActiveToolContext";
 import { PiBackspace, PiPlus } from "react-icons/pi";
 import { HeaderShell } from "../../components/ui/HeaderShell";
 import { useMeasure } from "./context";
 
 export function MeasureOverlay() {
-  const { deactivateTool } = useMap();
+  const { deactivateTool } = useActiveTool();
   const { points, addPoint, removeLastPoint, clear } = useMeasure();
 
   const distanceMeters = useMemo(

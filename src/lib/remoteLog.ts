@@ -65,9 +65,15 @@ export function setupRemoteLogging() {
   }
 
   for (const level of LEVELS) {
-    const original = console[level].bind(console);
-    console[level] = (...args: unknown[]) => {
-      original(...args);
+    const original = (
+      (console as unknown as Record<string, unknown>)[level] as (
+        ...args: unknown[]
+      ) => void
+    ).bind(console);
+    (console as unknown as Record<string, unknown>)[level] = (
+      ...args: unknown[]
+    ) => {
+      (original as (...args: unknown[]) => void)(...args);
       try {
         queue.push({
           level,

@@ -32,7 +32,7 @@ export function haptic(preset: HapticPreset = "selection"): void {
   h.trigger(10);
 
   h.trigger(preset).catch((err) => {
-    console.log("err", err);
+    console.error("err", err);
     // Ignore — haptics are best-effort.
   });
 }

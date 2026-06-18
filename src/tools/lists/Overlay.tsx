@@ -3,7 +3,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
 import { PiX, PiPlus, PiTrash, PiArrowLeft } from "react-icons/pi";
-import { useMap } from "../../lib/MapContext";
+import { useActiveTool } from "../../lib/ActiveToolContext";
 import { useLists } from "./context";
 import { DraggableListItem } from "./DraggableListItem";
 
@@ -14,7 +14,7 @@ const backend =
     : HTML5Backend;
 
 export function ListsOverlay() {
-  const { deactivateTool } = useMap();
+  const { deactivateTool } = useActiveTool();
   const {
     lists,
     selectedListId,

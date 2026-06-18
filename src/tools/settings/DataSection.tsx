@@ -1,170 +1,52 @@
-import { useState, useRef } from "react";
-import { PiTrash, PiDownload, PiUpload } from "react-icons/pi";
-import { z } from "zod";
-import { deleteOfflineDatabase } from "../../lib/offlineTiles";
+import { PiTrash, PiDownload, PiUpload, PiDatabase } from "react-icons/pi";
+import { SettingsSection } from "./settingsComponents";
+import { useDataSection } from "./useDataSection";
 
 interface DataSectionProps {
   storageEstimate: { usage: number; quota: number } | null;
 }
 
 export function DataSection({ storageEstimate }: DataSectionProps) {
-  const [deleteState, setDeleteState] = useState<
-    "idle" | "confirm" | "deleting" | "done"
-  >("idle");
-  const [importState, setImportState] = useState<
-    "idle" | "confirm" | "selecting" | "importing" | "error" | "success"
-  >("idle");
-  const [importError, setImportError] = useState<string>("");
-  const [exportState, setExportState] = useState<"idle" | "selecting">("idle");
-  const [exportSelection, setExportSelection] = useState({
-    pois: true,
-    lists: true,
-  });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const dataSchema = z.record(z.string(), z.string());
-
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  }
-
-  function handleExportData() {
-    const data: Record<string, string> = {};
-
-    if (exportSelection.pois) {
-      const poisRaw = localStorage.getItem("tur-vibes:custom-pois");
-      if (poisRaw) {
-        data["tur-vibes:custom-pois"] = poisRaw;
-      }
-    }
-
-    if (exportSelection.lists) {
-      const listsRaw = localStorage.getItem("tur-vibes:lists");
-      if (listsRaw) {
-        data["tur-vibes:lists"] = listsRaw;
-      }
-    }
-
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tur-vibes-data-${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    setExportState("idle");
-  }
-
-  async function handleImportData(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImportState("importing");
-    setImportError("");
-
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      const validatedData = dataSchema.parse(parsed);
-
-      for (const [key, value] of Object.entries(validatedData)) {
-        localStorage.setItem(key, value);
-      }
-
-      setImportState("success");
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (err) {
-      const errorMsg =
-        err instanceof z.ZodError
-          ? `Invalid data format: ${err.issues.map((e: z.ZodIssue) => e.message).join(", ")}`
-          : err instanceof SyntaxError
-            ? "Invalid JSON file"
-            : "Failed to import data";
-      setImportError(errorMsg);
-      setImportState("error");
-      setTimeout(() => {
-        setImportState("idle");
-      }, 3000);
-    }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  }
-
-  function handleOpenFilePickerForImport() {
-    setImportState("selecting");
-    fileInputRef.current?.click();
-  }
-
-  function handleCancelImportConfirm() {
-    setImportState("idle");
-  }
-
-  async function handleDeleteAll() {
-    if (deleteState === "idle") {
-      setDeleteState("confirm");
-      return;
-    }
-    if (deleteState === "confirm") {
-      setDeleteState("deleting");
-      try {
-        await deleteOfflineDatabase();
-        if (typeof caches !== "undefined") {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        }
-        localStorage.clear();
-      } finally {
-        setDeleteState("done");
-      }
-    }
-  }
+  const {
+    deleteState,
+    importState,
+    setImportState,
+    importError,
+    exportState,
+    setExportState,
+    exportSelection,
+    setExportSelection,
+    fileInputRef,
+    formatBytes,
+    handleExportData,
+    handleImportData,
+    handleOpenFilePickerForImport,
+    handleCancelImportConfirm,
+    handleDeleteAll,
+  } = useDataSection();
 
   return (
-    <>
+    <SettingsSection
+      icon={PiDatabase}
+      title="Data"
+      description="Manage your saved data and offline regions."
+    >
       {storageEstimate && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            padding: "12px 14px",
-            background: "rgba(255,255,255,0.08)",
-            borderRadius: 12,
-          }}
-        >
+        <div className="flex flex-col gap-2 px-3.5 py-3 bg-white/8 rounded-lg">
           <div>
-            <div style={{ color: "#9ca3af", fontSize: 12, marginBottom: 2 }}>
+            <div className="text-gray-400 text-xs mb-0.5 font-semibold uppercase tracking-wider">
               Used Storage
             </div>
-            <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>
+            <div className="text-white text-sm font-bold">
               {formatBytes(storageEstimate.usage)} /{" "}
               {formatBytes(storageEstimate.quota)}
             </div>
           </div>
-          <div
-            style={{
-              height: 6,
-              background: "rgba(255,255,255,0.15)",
-              borderRadius: 3,
-              overflow: "hidden",
-            }}
-          >
+          <div className="h-1.5 bg-white/15 rounded overflow-hidden">
             <div
+              className="h-full bg-emerald-500 transition-all duration-200"
               style={{
-                height: "100%",
-                background: "#10b981",
                 width: `${Math.min((storageEstimate.usage / storageEstimate.quota) * 100, 100)}%`,
-                transition: "width 0.2s",
               }}
             />
           </div>
@@ -174,59 +56,24 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
       {exportState === "idle" && (
         <button
           onClick={() => setExportState("selecting")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            padding: "12px 14px",
-            borderRadius: 12,
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#fff",
-            background: "rgba(59, 130, 246, 0.2)",
-            border: "1px solid rgba(59, 130, 246, 0.5)",
-            width: "100%",
-            transition: "background 0.15s",
-            cursor: "pointer",
-          }}
+          className="flex items-center justify-center gap-2 px-3.5 py-3 rounded-lg text-sm font-bold text-white bg-blue-500/20 border border-blue-500/50 w-full transition-colors duration-150 cursor-pointer hover:bg-blue-500/30"
         >
           <PiDownload
             size={16}
             color="#93c5fd"
-            style={{ display: "block", flexShrink: 0 }}
+            className="block flex-shrink-0"
           />
           Export data
         </button>
       )}
 
       {exportState === "selecting" && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            padding: "12px 14px",
-            background: "rgba(59, 130, 246, 0.1)",
-            border: "1px solid rgba(59, 130, 246, 0.5)",
-            borderRadius: 12,
-          }}
-        >
-          <div style={{ color: "#93c5fd", fontSize: 13, fontWeight: 600 }}>
+        <div className="flex flex-col gap-2 px-3.5 py-3 bg-blue-500/10 border border-blue-500/50 rounded-lg">
+          <div className="text-blue-300 text-xs font-semibold">
             Select data to export:
           </div>
 
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "2px 0",
-              cursor: "pointer",
-              fontSize: 13,
-              color: "#fff",
-            }}
-          >
+          <label className="flex items-center gap-2.5 py-0.5 cursor-pointer text-xs text-white">
             <input
               type="checkbox"
               checked={exportSelection.pois}
@@ -236,26 +83,12 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
                   pois: e.target.checked,
                 })
               }
-              style={{
-                width: 18,
-                height: 18,
-                cursor: "pointer",
-              }}
+              className="w-4.5 h-4.5 cursor-pointer"
             />
             Custom POIs
           </label>
 
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "2px 0",
-              cursor: "pointer",
-              fontSize: 13,
-              color: "#fff",
-            }}
-          >
+          <label className="flex items-center gap-2.5 py-0.5 cursor-pointer text-xs text-white">
             <input
               type="checkbox"
               checked={exportSelection.lists}
@@ -265,57 +98,26 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
                   lists: e.target.checked,
                 })
               }
-              style={{
-                width: 18,
-                height: 18,
-                cursor: "pointer",
-              }}
+              className="w-4.5 h-4.5 cursor-pointer"
             />
             Lists
           </label>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <div className="flex gap-2 mt-1">
             <button
               onClick={() => setExportState("idle")}
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                cursor: "pointer",
-              }}
+              className="flex-1 px-3 py-2.5 rounded-lg text-xs font-bold text-white bg-white/10 border border-white/20 cursor-pointer hover:bg-white/20 transition-colors duration-150"
             >
               Cancel
             </button>
             <button
               onClick={handleExportData}
               disabled={!exportSelection.pois && !exportSelection.lists}
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                background:
-                  exportSelection.pois || exportSelection.lists
-                    ? "rgba(59, 130, 246, 0.3)"
-                    : "rgba(255,255,255,0.08)",
-                border:
-                  exportSelection.pois || exportSelection.lists
-                    ? "1px solid rgba(59, 130, 246, 0.6)"
-                    : "1px solid rgba(255,255,255,0.2)",
-                cursor:
-                  exportSelection.pois || exportSelection.lists
-                    ? "pointer"
-                    : "not-allowed",
-                opacity:
-                  exportSelection.pois || exportSelection.lists ? 1 : 0.5,
-              }}
+              className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-bold text-white transition-colors duration-150 ${
+                exportSelection.pois || exportSelection.lists
+                  ? "bg-blue-500/30 border border-blue-500/60 cursor-pointer hover:bg-blue-500/40"
+                  : "bg-white/8 border border-white/20 cursor-not-allowed opacity-50"
+              }`}
             >
               Export
             </button>
@@ -327,36 +129,17 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
         <button
           onClick={() => setImportState("confirm")}
           disabled={importState === "importing" || importState === "selecting"}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            padding: "12px 14px",
-            borderRadius: 12,
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#fff",
-            background:
-              importState === "success"
-                ? "rgba(16, 185, 129, 0.2)"
-                : importState === "error"
-                  ? "rgba(239, 68, 68, 0.2)"
-                  : "rgba(59, 130, 246, 0.2)",
-            border:
-              importState === "success"
-                ? "1px solid rgba(16, 185, 129, 0.5)"
-                : importState === "error"
-                  ? "1px solid rgba(239, 68, 68, 0.5)"
-                  : "1px solid rgba(59, 130, 246, 0.5)",
-            width: "100%",
-            transition: "background 0.15s, border 0.15s",
-            cursor:
-              importState === "importing" || importState === "selecting"
-                ? "default"
-                : "pointer",
-            opacity: importState === "selecting" ? 0.6 : 1,
-          }}
+          className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-lg text-sm font-bold text-white w-full transition-colors duration-150 ${
+            importState === "success"
+              ? "bg-emerald-500/20 border border-emerald-500/50"
+              : importState === "error"
+                ? "bg-red-500/20 border border-red-500/50"
+                : "bg-blue-500/20 border border-blue-500/50 hover:bg-blue-500/30"
+          } ${
+            importState === "importing" || importState === "selecting"
+              ? "cursor-default opacity-60"
+              : "cursor-pointer"
+          }`}
         >
           <PiUpload
             size={16}
@@ -367,7 +150,7 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
                   ? "#fca5a5"
                   : "#93c5fd"
             }
-            style={{ display: "block", flexShrink: 0 }}
+            className="block flex-shrink-0"
           />
           {importState === "idle" && "Import data"}
           {importState === "importing" && "Importing…"}
@@ -377,50 +160,20 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
       )}
 
       {importState === "confirm" && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            padding: "12px 14px",
-            background: "rgba(251, 146, 60, 0.1)",
-            border: "1px solid rgba(251, 146, 60, 0.5)",
-            borderRadius: 12,
-          }}
-        >
-          <div style={{ color: "#fed7aa", fontSize: 13, fontWeight: 600 }}>
+        <div className="flex flex-col gap-2 px-3.5 py-3 bg-orange-500/10 border border-orange-500/50 rounded-lg">
+          <div className="text-orange-300 text-xs font-semibold">
             This will overwrite your current data. Continue?
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <button
               onClick={handleCancelImportConfirm}
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                cursor: "pointer",
-              }}
+              className="flex-1 px-3 py-2.5 rounded-lg text-xs font-bold text-white bg-white/10 border border-white/20 cursor-pointer hover:bg-white/20 transition-colors duration-150"
             >
               Cancel
             </button>
             <button
               onClick={handleOpenFilePickerForImport}
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                background: "rgba(251, 146, 60, 0.3)",
-                border: "1px solid rgba(251, 146, 60, 0.6)",
-                cursor: "pointer",
-              }}
+              className="flex-1 px-3 py-2.5 rounded-lg text-xs font-bold text-white bg-orange-500/30 border border-orange-500/60 cursor-pointer hover:bg-orange-500/40 transition-colors duration-150"
             >
               Overwrite
             </button>
@@ -433,20 +186,11 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
         type="file"
         accept=".json"
         onChange={(e) => void handleImportData(e)}
-        style={{ display: "none" }}
+        className="hidden"
       />
 
       {importState === "error" && importError && (
-        <div
-          style={{
-            padding: "10px 12px",
-            background: "rgba(239, 68, 68, 0.1)",
-            border: "1px solid rgba(239, 68, 68, 0.3)",
-            borderRadius: 8,
-            color: "#fca5a5",
-            fontSize: 12,
-          }}
-        >
+        <div className="px-3 py-2.5 bg-red-500/10 border border-red-500/30 rounded text-red-300 text-xs">
           {importError}
         </div>
       )}
@@ -454,34 +198,18 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
       <button
         onClick={() => void handleDeleteAll()}
         disabled={deleteState === "deleting" || deleteState === "done"}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          padding: "12px 14px",
-          borderRadius: 12,
-          fontSize: 14,
-          fontWeight: 700,
-          color: "#fff",
-          background:
-            deleteState === "confirm"
-              ? "#dc2626"
-              : deleteState === "done"
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(220, 38, 38, 0.2)",
-          border:
-            deleteState === "confirm"
-              ? "none"
-              : "1px solid rgba(220, 38, 38, 0.5)",
-          width: "100%",
-          transition: "background 0.15s",
-        }}
+        className={`flex items-center justify-center gap-2 px-3.5 py-3 rounded-lg text-sm font-bold text-white w-full transition-colors duration-150 ${
+          deleteState === "confirm"
+            ? "bg-red-600 border-none cursor-pointer hover:bg-red-700"
+            : deleteState === "done"
+              ? "bg-white/8 border border-red-500/50 cursor-not-allowed"
+              : "bg-red-500/20 border border-red-500/50 cursor-pointer hover:bg-red-500/30"
+        }`}
       >
         <PiTrash
           size={16}
           color={deleteState === "done" ? "#9ca3af" : "#fca5a5"}
-          style={{ display: "block", flexShrink: 0 }}
+          className="block flex-shrink-0"
         />
         {deleteState === "idle" && "Delete all data"}
         {deleteState === "confirm" &&
@@ -489,6 +217,6 @@ export function DataSection({ storageEstimate }: DataSectionProps) {
         {deleteState === "deleting" && "Deleting…"}
         {deleteState === "done" && "All data deleted — reload the app"}
       </button>
-    </>
+    </SettingsSection>
   );
 }
