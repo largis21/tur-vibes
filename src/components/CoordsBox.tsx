@@ -12,6 +12,8 @@ function formatCoord(coord: (LatLng & { accuracy?: number }) | null) {
 export function CoordsBox() {
   const { cursorCoordinate, mapRef } = useMap();
   const userPosition = useGeoLocation((state) => state.userPosition);
+  const [gotoOpen, setGotoOpen] = useState(false);
+  const [copiedLabel, setCopiedLabel] = useState<"Cursor" | "You" | null>(null);
 
   // Derive just the lat/lon from the map's Region — re-renders only when
   // those numbers change.
@@ -22,19 +24,44 @@ export function CoordsBox() {
     },
     (a, b) => a.latitude === b.latitude && a.longitude === b.longitude,
   );
-  const [gotoOpen, setGotoOpen] = useState(false);
+
+  function handleCopyCoords(label: "Cursor" | "You") {
+    const coord = label === "Cursor" ? cursor : userPosition;
+    if (!coord) return;
+    const coordsText = `${coord.latitude.toFixed(5)}, ${coord.longitude.toFixed(5)}`;
+    navigator.clipboard.writeText(coordsText).then(() => {
+      setCopiedLabel(label);
+      setTimeout(() => setCopiedLabel(null), 2000);
+    });
+  }
 
   return (
     <>
-      <button
-        type="button"
+      <div
         onClick={() => setGotoOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            setGotoOpen(true);
+          }
+        }}
         aria-label="Go to coordinate"
-        className="absolute left-4 bottom-9 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left"
+        className="absolute left-4 bottom-9 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left cursor-pointer hover:bg-dark-900 transition-colors"
       >
-        <Row label="Cursor" value={formatCoord(cursor)} />
-        <Row label="You" value={formatCoord(userPosition)} />
-      </button>
+        <Row 
+          label={copiedLabel === "Cursor" ? "✓ Copied" : "Cursor"} 
+          value={formatCoord(cursor)}
+          onCopy={() => handleCopyCoords("Cursor")}
+          copied={copiedLabel === "Cursor"}
+        />
+        <Row 
+          label={copiedLabel === "You" ? "✓ Copied" : "You"}
+          value={formatCoord(userPosition)}
+          onCopy={() => handleCopyCoords("You")}
+          copied={copiedLabel === "You"}
+        />
+      </div>
       {gotoOpen && (
         <GotoModal
           initial={cursor}
@@ -52,13 +79,30 @@ export function CoordsBox() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, onCopy, copied }: { label: string; value: string; onCopy?: () => void; copied?: boolean }) {
   return (
     <div className="flex flex-col">
       <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
         {label}
       </span>
-      <span className="text-white font-mono text-xs font-medium leading-normal">
+      <span
+        onClick={(e) => {
+          e.stopPropagation();
+          onCopy?.();
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.stopPropagation();
+            onCopy?.();
+          }
+        }}
+        title="Click to copy"
+        className={`text-white font-mono text-xs font-medium leading-normal text-left cursor-pointer transition-colors ${
+          copied ? "text-green-400" : "hover:text-blue-300"
+        }`}
+      >
         {value}
       </span>
     </div>

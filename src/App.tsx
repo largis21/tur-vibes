@@ -12,6 +12,7 @@ import { registerOfflineProtocols } from "./lib/offlineTiles";
 import { loadLastRegion } from "./lib/persistedRegion";
 import { PeakProvider } from "./lib/PeakContext";
 import { PeakInfoModal } from "./components/PeakInfoModal";
+import { ToastHost } from "./components/ToastHost";
 import { CustomPoiCard } from "./components/CustomPoiCard";
 import { PointInfoProvider } from "./lib/PointInfoContext";
 import type { LatLng } from "./lib/types";
@@ -103,6 +104,7 @@ function AppContent() {
         onSelectTool={handleSelectTool}
         onClose={closeSidebar}
       />
+      <ToastHost />
     </div>
   );
 }

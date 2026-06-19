@@ -49,6 +49,7 @@ function PoiCard({
   const [draft, setDraft] = useState(poi.name);
   const [pickingType, setPickingType] = useState(false);
   const [pickingColor, setPickingColor] = useState(false);
+  const [copiedCoords, setCopiedCoords] = useState(false);
 
   const poiColor = poi.color ?? "#3b82f6";
 
@@ -69,6 +70,14 @@ function PoiCard({
     if (trimmed) onRename(trimmed);
     else setDraft(poi.name);
     setEditing(false);
+  }
+
+  function handleCopyCoords() {
+    const coordsText = `${poi.lat.toFixed(5)}, ${poi.lng.toFixed(5)}`;
+    navigator.clipboard.writeText(coordsText).then(() => {
+      setCopiedCoords(true);
+      setTimeout(() => setCopiedCoords(false), 2000);
+    });
   }
 
   const pickerBtn = (active: boolean): React.CSSProperties => ({
@@ -153,7 +162,21 @@ function PoiCard({
           )}
           <div style={{ color: "#9ca3af", fontSize: 12, marginTop: 3 }}>
             {poi.locationType ? `${poi.locationType} · ` : ""}
-            {poi.lat.toFixed(5)}, {poi.lng.toFixed(5)}
+            <button
+              onClick={handleCopyCoords}
+              title="Click to copy coordinates"
+              style={{
+                background: "none",
+                border: "none",
+                color: copiedCoords ? "#22c55e" : "#9ca3af",
+                fontSize: 12,
+                cursor: "pointer",
+                padding: 0,
+                transition: "color 0.3s",
+              }}
+            >
+              {copiedCoords ? "✓ " : ""}{poi.lat.toFixed(5)}, {poi.lng.toFixed(5)}
+            </button>
             {poi.elevation != null ? ` · ${poi.elevation.toFixed(0)} m` : ""}
           </div>
         </div>

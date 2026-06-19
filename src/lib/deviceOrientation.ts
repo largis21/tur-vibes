@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { logger } from "./logger";
 
 type Listener = (heading: number | null) => void;
 
@@ -109,7 +110,10 @@ export async function requestDeviceOrientation(): Promise<void> {
   try {
     // Must be called synchronously inside a user gesture (the toggle click).
     await Ctor.requestPermission!();
-  } catch {
-    // Silently ignore errors
+  } catch (err) {
+    logger.warn("Device orientation permission request failed", {
+      source: "deviceOrientation",
+      error: err,
+    });
   }
 }

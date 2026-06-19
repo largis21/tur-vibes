@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { logger } from "./logger";
 
 export const STORAGE_KEYS = {
   offlineMode: "tur-vibes:offline-mode",
@@ -18,13 +19,19 @@ export const STORAGE_KEYS = {
   onboardingCompleted: "tur-vibes:onboarding-completed",
   customPois: "tur-vibes:custom-pois",
   lists: "tur-vibes:lists",
+  logs: "tur-vibes:logs",
 } as const;
 
 /** Read a raw string. Returns null on any failure (private mode, missing). */
 export function safeGetItem(key: string): string | null {
   try {
     return localStorage.getItem(key);
-  } catch {
+  } catch (err) {
+    logger.debug("localStorage.getItem failed", {
+      source: "storage",
+      key,
+      error: err,
+    });
     return null;
   }
 }
@@ -33,8 +40,13 @@ export function safeGetItem(key: string): string | null {
 export function safeSetItem(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.warn("localStorage.setItem failed", {
+      source: "storage",
+      op: "setItem",
+      key,
+      error: err,
+    });
   }
 }
 
@@ -42,8 +54,13 @@ export function safeSetItem(key: string, value: string): void {
 export function safeRemoveItem(key: string): void {
   try {
     localStorage.removeItem(key);
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.debug("localStorage.removeItem failed", {
+      source: "storage",
+      op: "removeItem",
+      key,
+      error: err,
+    });
   }
 }
 
@@ -62,7 +79,12 @@ export function safeGetJSON<T>(
     const parsed: unknown = JSON.parse(raw);
     if (validate && !validate(parsed)) return fallback;
     return parsed as T;
-  } catch {
+  } catch (err) {
+    logger.debug("safeGetJSON parse failed", {
+      source: "storage",
+      key,
+      error: err,
+    });
     return fallback;
   }
 }
@@ -71,8 +93,13 @@ export function safeGetJSON<T>(
 export function safeSetJSON(key: string, value: unknown): void {
   try {
     safeSetItem(key, JSON.stringify(value));
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.debug("safeSetJSON stringify failed", {
+      source: "storage",
+      op: "stringify",
+      key,
+      error: err,
+    });
   }
 }
 
@@ -126,7 +153,13 @@ export function usePersistedState<T>(
       const parsed = codec.parse(raw);
       if (validate && !validate(parsed)) return defaultValue;
       return parsed;
-    } catch {
+    } catch (err) {
+      logger.debug("usePersistedState initial parse failed", {
+        source: "storage",
+        op: "usePersistedState.init",
+        key,
+        error: err,
+      });
       return defaultValue;
     }
   });
@@ -143,8 +176,13 @@ export function usePersistedState<T>(
           typeof next === "function" ? (next as (prev: T) => T)(prev) : next;
         try {
           safeSetItem(key, codecRef.current.stringify(resolved));
-        } catch {
-          // ignore
+        } catch (err) {
+          logger.debug("usePersistedState stringify failed", {
+            source: "storage",
+            op: "usePersistedState.stringify",
+            key,
+            error: err,
+          });
         }
         return resolved;
       });
@@ -163,8 +201,13 @@ export function usePersistedState<T>(
         const parsed = codecRef.current.parse(e.newValue);
         if (validateRef.current && !validateRef.current(parsed)) return;
         setValue(parsed);
-      } catch {
-        // ignore — keep current value
+      } catch (err) {
+        logger.debug("usePersistedState storage event parse failed", {
+          source: "storage",
+          op: "usePersistedState.onStorage",
+          key,
+          error: err,
+        });
       }
     }
     window.addEventListener("storage", onStorage);

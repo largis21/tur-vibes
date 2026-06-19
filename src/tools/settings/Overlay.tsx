@@ -4,6 +4,8 @@ import { ModalShell } from "../../components/ui/ModalShell";
 
 import { DataSection } from "./DataSection";
 import { DeveloperSection } from "./DeveloperSection";
+import { LogsSection } from "./LogsSection";
+import { LogsView } from "./LogsView";
 
 export function SettingsOverlay() {
   const { deactivateTool } = useActiveTool();
@@ -12,7 +14,7 @@ export function SettingsOverlay() {
     quota: number;
   } | null>(null);
   const [selectedSection, setSelectedSection] = useState<
-    "permissions" | "data" | null
+    "permissions" | "data" | "logs" | null
   >(null);
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export function SettingsOverlay() {
   const getTitle = () => {
     if (selectedSection === "permissions") return "Permissions";
     if (selectedSection === "data") return "Data";
+    if (selectedSection === "logs") return "Logs";
     return "Settings";
   };
 
@@ -42,6 +45,7 @@ export function SettingsOverlay() {
     if (selectedSection === "permissions")
       return "Grant access to device features.";
     if (selectedSection === "data") return "Manage your app data and storage.";
+    if (selectedSection === "logs") return "App diagnostics and events.";
     return undefined;
   };
 
@@ -54,8 +58,15 @@ export function SettingsOverlay() {
       scrollable
       zIndex={20}
     >
-      <DataSection storageEstimate={storageEstimate} />
-      <DeveloperSection />
+      {selectedSection === "logs" ? (
+        <LogsView />
+      ) : (
+        <>
+          <DataSection storageEstimate={storageEstimate} />
+          <LogsSection onView={() => setSelectedSection("logs")} />
+          <DeveloperSection />
+        </>
+      )}
     </ModalShell>
   );
 }

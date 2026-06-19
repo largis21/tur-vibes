@@ -1,6 +1,7 @@
 import maplibregl from "maplibre-gl";
 import { MAP_SOURCES, getMapSource, tileMatchesBounds } from "./mapSources";
 import type { LatLng } from "./types";
+import { logger } from "./logger";
 
 /** Tile URL template MapLibre will request when in offline mode. */
 export function getOfflineTileTemplate(sourceId: string): string {
@@ -424,7 +425,12 @@ export function downloadOfflineTiles(
           const buf = await res.arrayBuffer();
           await putTile(tile.sourceId, tile.z, tile.x, tile.y, buf);
           completed += 1;
-        } catch {
+        } catch (err) {
+          logger.warn("Failed to download/cache offline tile", {
+            source: "offlineTiles",
+            error: err,
+            tile: { z: tile.z, x: tile.x, y: tile.y },
+          });
           failed += 1;
         }
         onProgress({ total, completed, failed });
@@ -455,8 +461,11 @@ export async function getOfflineTilesSize(): Promise<number> {
     try {
       const est = await navigator.storage.estimate();
       return est.usage ?? 0;
-    } catch {
-      // fall through
+    } catch (err) {
+      logger.debug("Failed to estimate storage", {
+        source: "offlineTiles",
+        error: err,
+      });
     }
   }
   return 0;
@@ -469,8 +478,11 @@ export async function deleteOfflineDatabase(): Promise<void> {
     try {
       const db = await dbPromise;
       db.close();
-    } catch {
-      // ignore
+    } catch (err) {
+      logger.debug("Failed to close offline database", {
+        source: "offlineTiles",
+        error: err,
+      });
     }
     dbPromise = null;
   }

@@ -3,7 +3,7 @@ import { usePointInfo } from "../lib/PointInfoContext";
 import { usePoi } from "../tools/poi/context";
 import { ModalShell } from "./ui/ModalShell";
 import { TerrainViewModalContent } from "./TerrainViewModal";
-import { PiMapPin, PiMountains, PiArrowLeft } from "react-icons/pi";
+import { PiMapPin, PiMountains, PiArrowLeft, PiCloud } from "react-icons/pi";
 
 function formatCoord(value: number) {
   return value.toFixed(5);
@@ -28,12 +28,22 @@ export function PointInfoModal() {
   const { addPoi } = usePoi();
   const [saving, setSaving] = useState(false);
   const [showTerrainView, setShowTerrainView] = useState(false);
+  const [copiedCoords, setCopiedCoords] = useState(false);
 
   if (!point) return null;
 
   function handleClose() {
     setShowTerrainView(false);
     close();
+  }
+
+  function handleCopyCoords() {
+    if (!point) return;
+    const coordsText = `${formatCoord(point.latitude)}, ${formatCoord(point.longitude)}`;
+    navigator.clipboard.writeText(coordsText).then(() => {
+      setCopiedCoords(true);
+      setTimeout(() => setCopiedCoords(false), 2000);
+    });
   }
 
   async function handleSaveAsPoi() {
@@ -76,8 +86,11 @@ export function PointInfoModal() {
         <>
           <div className="grid grid-cols-2 gap-3">
             <Stat
-              label="Coordinates"
+              label={copiedCoords ? "✓ Copied" : "Coordinates"}
               value={`${formatCoord(point.latitude)}, ${formatCoord(point.longitude)}`}
+              onClick={handleCopyCoords}
+              isClickable={true}
+              isActive={copiedCoords}
             />
             <Stat
               label="Elevation"
@@ -86,16 +99,6 @@ export function PointInfoModal() {
                   ? "…"
                   : info?.elevation != null
                     ? `${info.elevation.toFixed(0)} m`
-                    : "–"
-              }
-            />
-            <Stat
-              label="Slope"
-              value={
-                loading
-                  ? "…"
-                  : info?.slopeDeg != null
-                    ? `${info.slopeDeg.toFixed(1)}°`
                     : "–"
               }
             />
@@ -112,6 +115,16 @@ export function PointInfoModal() {
               isClickable={info?.aspectDeg != null && !loading}
               isActive={showAspectArrow}
             />
+            <Stat
+              label="Slope"
+              value={
+                loading
+                  ? "…"
+                  : info?.slopeDeg != null
+                    ? `${info.slopeDeg.toFixed(1)}°`
+                    : "–"
+              }
+            />
           </div>
 
           {error ? (
@@ -120,19 +133,30 @@ export function PointInfoModal() {
             </div>
           ) : null}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setShowTerrainView(true)}
-              className="flex items-center justify-center gap-2 flex-1 px-3.5 py-2.75 rounded-lg bg-purple-500/15 border border-purple-500/40 text-purple-300 text-sm font-semibold hover:bg-purple-500/25 transition-colors"
+              className="flex items-center justify-center gap-2 flex-1 min-w-[120px] px-3.5 py-2.75 rounded-lg bg-purple-500/15 border border-purple-500/40 text-purple-300 text-sm font-semibold hover:bg-purple-500/25 transition-colors"
             >
               <PiMountains size={16} className="flex-shrink-0" />
               View from here
             </button>
 
             <button
+              onClick={() => {
+                const weatherUrl = `https://www.yr.no/nb/værvarsel/daglig-tabell/${point.latitude},${point.longitude}`;
+                window.open(weatherUrl, "_blank");
+              }}
+              className="flex items-center justify-center gap-2 flex-1 min-w-[120px] px-3.5 py-2.75 rounded-lg bg-blue-500/15 border border-blue-500/40 text-blue-300 text-sm font-semibold hover:bg-blue-500/25 transition-colors"
+            >
+              <PiCloud size={16} className="flex-shrink-0" />
+              Weather
+            </button>
+
+            <button
               onClick={handleSaveAsPoi}
               disabled={saving}
-              className={`flex items-center justify-center gap-2 flex-1 px-3.5 py-2.75 rounded-lg bg-blue-500/15 border border-blue-500/40 text-blue-300 text-sm font-semibold hover:bg-blue-500/25 transition-colors ${
+              className={`flex items-center justify-center gap-2 flex-1 min-w-[120px] px-3.5 py-2.75 rounded-lg bg-blue-500/15 border border-blue-500/40 text-blue-300 text-sm font-semibold hover:bg-blue-500/25 transition-colors ${
                 saving ? "opacity-60 cursor-not-allowed" : ""
               }`}
             >

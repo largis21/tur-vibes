@@ -7,9 +7,13 @@ import { registerSW } from "virtual:pwa-register";
 
 import App from "./App";
 import { setupRemoteLogging } from "./lib/remoteLog";
+import { setupLogger, logger } from "./lib/logger";
 
 setupRemoteLogging();
+setupLogger();
 registerSW({ immediate: true });
+
+logger.info("App initialized");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
