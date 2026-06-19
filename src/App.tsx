@@ -83,7 +83,7 @@ function AppContent() {
         keys={defaultUi}
         bannerVisible={isDefaultTool && offlineMode}
         compassTopOffset={
-          activeTool.id === "poi" // TODO move to tool def
+          activeTool.id === "poi" || activeTool.id === "bearing" // TODO move to tool def
             ? 88
             : undefined
         }

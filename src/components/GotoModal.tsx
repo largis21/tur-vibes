@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { LatLng } from "../lib/types";
 import { ModalShell } from "./ui/ModalShell";
+import { useGeoLocation } from "../state/geoLocation/useGeoLocation";
 
 /**
  * Parse one or two coordinate inputs into a LatLng. Accepts either a single
@@ -33,7 +34,9 @@ export function GotoModal({
   const [lat, setLat] = useState(initial.latitude.toFixed(5));
   const [lon, setLon] = useState(initial.longitude.toFixed(5));
   const [error, setError] = useState<string | null>(null);
+  const [copiedButton, setCopiedButton] = useState<string | null>(null);
   const latRef = useRef<HTMLInputElement | null>(null);
+  const userPosition = useGeoLocation((state) => state.userPosition);
 
   useEffect(() => {
     latRef.current?.focus();
@@ -50,12 +53,27 @@ export function GotoModal({
     onSubmit(coord);
   }
 
+  function handleCopy() {
+    navigator.clipboard.writeText(`${lat}, ${lon}`);
+    setCopiedButton("cursor");
+    setTimeout(() => setCopiedButton(null), 2000);
+  }
+
+  function handleCopyUserLocation() {
+    if (!userPosition) return;
+    const coords = `${userPosition.latitude.toFixed(5)}, ${userPosition.longitude.toFixed(5)}`;
+    navigator.clipboard.writeText(coords);
+    setCopiedButton("user");
+    setTimeout(() => setCopiedButton(null), 2000);
+  }
+
   return (
     <ModalShell
       title="Go to coordinate"
       onClose={onClose}
       backdrop
       zIndex={100}
+      position="top"
     >
       <form
         onSubmit={handleSubmit}
@@ -81,21 +99,65 @@ export function GotoModal({
           <div style={{ color: "#fca5a5", fontSize: 13 }}>{error}</div>
         ) : null}
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              background: "rgba(255,255,255,0.12)",
-              color: "#d1d5db",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            Cancel
-          </button>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleCopy}
+              title={
+                copiedButton === "cursor" ? "Copied!" : "Copy cursor location"
+              }
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                background:
+                  copiedButton === "cursor"
+                    ? "rgba(34, 197, 94, 0.3)"
+                    : "rgba(255,255,255,0.12)",
+                color: copiedButton === "cursor" ? "#86efac" : "#d1d5db",
+                fontSize: 14,
+                fontWeight: 600,
+                transition: "all 0.2s",
+              }}
+            >
+              {copiedButton === "cursor" ? "✓ Copied" : "Copy cursor"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyUserLocation}
+              disabled={!userPosition}
+              title={
+                !userPosition
+                  ? "User location not available"
+                  : copiedButton === "user"
+                    ? "Copied!"
+                    : "Copy user location"
+              }
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                background:
+                  copiedButton === "user"
+                    ? "rgba(34, 197, 94, 0.3)"
+                    : "rgba(255,255,255,0.12)",
+                color: copiedButton === "user" ? "#86efac" : "#d1d5db",
+                fontSize: 14,
+                fontWeight: 600,
+                transition: "all 0.2s",
+                opacity: userPosition ? 1 : 0.5,
+                cursor: userPosition ? "pointer" : "not-allowed",
+              }}
+            >
+              {copiedButton === "user" ? "✓ Copied" : "Copy user"}
+            </button>
+          </div>
           <button
             type="submit"
             style={{

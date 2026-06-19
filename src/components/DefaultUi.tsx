@@ -3,6 +3,7 @@ import { CoordsBox } from "./CoordsBox";
 import { FabButton } from "./FabButton";
 import { LocateButton } from "./LocateButton";
 import { MenuButton } from "./MenuButton";
+import { SearchButton } from "./SearchButton";
 import { SteepnessButton } from "./SteepnessButton";
 import { PiFunnel } from "react-icons/pi";
 import { usePointInfo } from "../lib/PointInfoContext";
@@ -41,6 +42,7 @@ export function DefaultUi({
 
   const fabButtons = (
     [
+      ["searchButton", <SearchButton key="search" />],
       ["steepnessButton", <SteepnessButton key="steepness" />],
       ["locateButton", <LocateButton key="locate" />],
       ["menuButton", <MenuButton key="menu" />],

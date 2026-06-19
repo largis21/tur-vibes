@@ -10,5 +10,4 @@ export const listsTool = defineTool({
   Provider: ListsProvider,
   Overlay: ListsOverlay,
   cursor: false,
-  defaultUi: [],
 });

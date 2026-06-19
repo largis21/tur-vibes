@@ -13,8 +13,9 @@ export const defaultTool = defineTool({
   defaultUi: [
     "compass",
     "coordsBox",
+    "menuButton",
     "steepnessButton",
     "locateButton",
-    "menuButton",
+    "searchButton",
   ],
 });

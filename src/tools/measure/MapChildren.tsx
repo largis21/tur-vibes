@@ -1,4 +1,4 @@
-import type { Feature, LineString } from "geojson";
+import type { Feature, LineString, Point, FeatureCollection } from "geojson";
 import { useMemo } from "react";
 import { Layer, Source } from "react-map-gl/maplibre";
 import { useMeasure } from "./context";
@@ -14,6 +14,22 @@ export function MeasureMapChildren() {
         type: "LineString",
         coordinates: points.map((p) => [p.longitude, p.latitude]),
       },
+    }),
+    [points],
+  );
+
+  // Points for display
+  const pointsFeature = useMemo<FeatureCollection<Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: points.map((p) => ({
+        type: "Feature" as const,
+        properties: {},
+        geometry: {
+          type: "Point" as const,
+          coordinates: [p.longitude, p.latitude],
+        },
+      })),
     }),
     [points],
   );
@@ -35,10 +51,24 @@ export function MeasureMapChildren() {
     };
   }, [points, cursorPosition]);
 
-  if (points.length < 2 && !previewShape) return null;
+  if (points.length < 1 && !previewShape) return null;
 
   return (
     <>
+      {points.length >= 1 && (
+        <Source id="measure-points-src" type="geojson" data={pointsFeature}>
+          <Layer
+            id="measure-points"
+            type="circle"
+            paint={{
+              "circle-radius": 4,
+              "circle-color": "#f97316",
+              "circle-stroke-width": 1.5,
+              "circle-stroke-color": "#ffffff",
+            }}
+          />
+        </Source>
+      )}
       {points.length >= 2 && (
         <Source id="measure-line-src" type="geojson" data={shape}>
           <Layer
@@ -46,7 +76,7 @@ export function MeasureMapChildren() {
             type="line"
             paint={{
               "line-color": "#f97316",
-              "line-width": 4,
+              "line-width": 2.5,
             }}
             layout={{
               "line-cap": "round",
@@ -62,7 +92,7 @@ export function MeasureMapChildren() {
             type="line"
             paint={{
               "line-color": "#f97316",
-              "line-width": 3,
+              "line-width": 2,
               "line-dasharray": [0.5, 2],
               "line-opacity": 0.6,
             }}

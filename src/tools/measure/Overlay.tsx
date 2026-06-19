@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { formatDistance, getTotalDistanceMeters } from "../../lib/geo";
 import { useActiveTool } from "../../lib/ActiveToolContext";
 import { PiBackspace, PiPlus } from "react-icons/pi";
-import { HeaderShell } from "../../components/ui/HeaderShell";
+import { ToolHeader } from "../../components/ui/ToolHeader";
 import { useMeasure } from "./context";
 
 export function MeasureOverlay() {
@@ -21,50 +21,36 @@ export function MeasureOverlay() {
 
   return (
     <>
-      <HeaderShell onClose={handleClose} ariaLabel="Measure tool">
-        <button
-          aria-label="Remove last point"
-          disabled={points.length === 0}
-          onClick={removeLastPoint}
-          style={{
-            ...actionButton,
-            opacity: points.length === 0 ? 0.35 : 1,
-          }}
-        >
-          <PiBackspace
-            size={20}
-            color="#fff"
-            style={{ display: "block", flexShrink: 0 }}
-          />
-        </button>
-        <div style={{ flex: 1, textAlign: "center" }}>
-          <div
+      <ToolHeader
+        title="Measure"
+        subtitle={
+          points.length === 0
+            ? "Pan the map, then add a point"
+            : `${points.length} point${
+                points.length === 1 ? "" : "s"
+              } - ${formatDistance(distanceMeters)}`
+        }
+        buttons={[
+          <button
+            key="remove"
+            aria-label="Remove last point"
+            disabled={points.length === 0}
+            onClick={removeLastPoint}
             style={{
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: 0.4,
-              textTransform: "uppercase",
+              ...actionButton,
+              opacity: points.length === 0 ? 0.35 : 1,
             }}
           >
-            Measure
-          </div>
-          <div
-            style={{
-              color: "#fff",
-              fontSize: 15,
-              fontWeight: 600,
-              marginTop: 4,
-            }}
-          >
-            {points.length === 0
-              ? "Pan the map, then add a point"
-              : `${points.length} point${
-                  points.length === 1 ? "" : "s"
-                } - ${formatDistance(distanceMeters)}`}
-          </div>
-        </div>
-      </HeaderShell>
+            <PiBackspace
+              size={20}
+              color="#fff"
+              style={{ display: "block", flexShrink: 0 }}
+            />
+          </button>,
+        ]}
+        onClose={handleClose}
+        ariaLabel="Measure tool"
+      />
       <button
         aria-label="Add point"
         onClick={addPoint}

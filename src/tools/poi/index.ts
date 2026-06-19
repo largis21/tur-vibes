@@ -10,5 +10,4 @@ export const poiTool = defineTool({
   Provider: PoiProvider,
   Overlay: PoiOverlay,
   cursor: true,
-  defaultUi: [],
 });

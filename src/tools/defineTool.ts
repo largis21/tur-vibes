@@ -10,6 +10,7 @@ export type DefaultUiKey =
   | "coordsBox"
   | "steepnessButton"
   | "locateButton"
+  | "searchButton"
   | "menuButton";
 
 export type ToolDefinition = {

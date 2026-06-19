@@ -83,7 +83,7 @@ export function LocationSearch({
                   latitude: r.representasjonspunkt.nord,
                   longitude: r.representasjonspunkt.øst,
                 },
-              )
+              ) / 1000
             : null,
         }));
         withDist.sort((a, b) => {
@@ -143,6 +143,7 @@ export function LocationSearch({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full px-9 py-2.5 rounded-secondary border-1.5 border-gray-200 text-base bg-gray-50 text-dark-900 outline-none box-border"
+          id="location-search-input" // Used for focusing search
         />
         {query && (
           <button

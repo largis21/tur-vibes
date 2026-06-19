@@ -17,6 +17,8 @@ export interface ModalShellProps {
   scrollable?: boolean;
   zIndex?: number;
   margin?: boolean;
+  /** Position of the modal: "top" or "bottom" (default: "bottom") */
+  position?: "top" | "bottom";
 }
 
 export function ModalShell({
@@ -29,6 +31,7 @@ export function ModalShell({
   backdrop = false,
   scrollable = false,
   zIndex = 90,
+  position = "bottom",
 }: ModalShellProps) {
   const card = (
     <div
@@ -137,7 +140,7 @@ export function ModalShell({
           inset: 0,
           background: "rgba(0,0,0,0.45)",
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: position === "top" ? "flex-start" : "flex-end",
           justifyContent: "center",
           padding: 16,
           zIndex,

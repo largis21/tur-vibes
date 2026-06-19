@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   steepnessOpacity: "tur-vibes:steepness-opacity",
   permissions: "tur-vibes:permissions",
   navigationBearings: "tur-vibes:navigation:bearings",
+  bearings: "tur-vibes:bearings",
   onboardingCompleted: "tur-vibes:onboarding-completed",
   customPois: "tur-vibes:custom-pois",
   lists: "tur-vibes:lists",

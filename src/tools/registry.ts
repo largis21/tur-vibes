@@ -5,10 +5,12 @@ import { offlineTool } from "./offline";
 import { poiTool } from "./poi";
 import { settingsTool } from "./settings";
 import { listsTool } from "./lists";
+import { bearingTool } from "./bearing";
 
 /** Tools shown in the sidebar. The default tool is intentionally omitted. */
 export const tools: ToolDefinition[] = [
   measureTool,
+  bearingTool,
   poiTool,
   offlineTool,
   listsTool,

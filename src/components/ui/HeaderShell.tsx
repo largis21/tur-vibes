@@ -5,6 +5,8 @@ export interface HeaderShellProps {
   children: ReactNode;
   onClose: () => void;
   ariaLabel?: string;
+  title?: string;
+  subtitle?: ReactNode;
 }
 
 /**
@@ -17,6 +19,8 @@ export function HeaderShell({
   children,
   onClose,
   ariaLabel,
+  title,
+  subtitle,
 }: HeaderShellProps) {
   return (
     <div
@@ -32,9 +36,36 @@ export function HeaderShell({
         alignItems: "center",
         gap: 8,
         padding: "12px 16px",
-        zIndex: 20,
+        zIndex: 35,
       }}
     >
+      {title && (
+        <div style={{ lineHeight: 1.2 }}>
+          <div
+            style={{
+              color: "#ffffff",
+              fontSize: 14,
+              fontWeight: 700,
+              marginTop: 0,
+              marginBottom: 0,
+            }}
+          >
+            {title}
+          </div>
+          {subtitle != null && (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 400,
+                color: "rgba(255, 255, 255, 0.6)",
+              }}
+            >
+              {subtitle}
+            </div>
+          )}
+        </div>
+      )}
+      {title && <div style={{ flex: 1 }} />}
       {children}
       <button
         aria-label="Close"

@@ -4,6 +4,7 @@ import { ModalShell } from "../../components/ui/ModalShell";
 import { RegionPreview } from "../../components/RegionPreview";
 import type { SavedOfflineRegion } from "../../lib/savedRegions";
 import { ToggleSwitch, formatBytes, primaryButton } from "./OfflineShared";
+import { useNetworkConnection } from "../../lib/useNetworkConnection";
 
 export function ListView({
   onClose,
@@ -32,6 +33,8 @@ export function ListView({
   onResumeCreate: () => void;
   onCancelDownload: () => void;
 }) {
+  const isOnline = useNetworkConnection();
+
   return (
     <ModalShell
       title="Offline maps"
@@ -40,15 +43,17 @@ export function ListView({
       scrollable
       zIndex={20}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1">
-          <div className="text-white text-sm font-bold">Offline mode</div>
-          <div className="text-gray-400 text-xs mt-0.5">
-            Use only downloaded maps. No network requests.
+      {isOnline && (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1">
+            <div className="text-white text-sm font-bold">Offline mode</div>
+            <div className="text-gray-400 text-xs mt-0.5">
+              Use only downloaded maps. No network requests.
+            </div>
           </div>
+          <ToggleSwitch checked={offlineMode} onChange={setOfflineMode} />
         </div>
-        <ToggleSwitch checked={offlineMode} onChange={setOfflineMode} />
-      </div>
+      )}
 
       {/* In-progress download banner */}
       {downloading && progress ? (

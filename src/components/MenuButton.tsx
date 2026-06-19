@@ -3,11 +3,11 @@ import { FabButton } from "./FabButton";
 import { useUiState } from "../lib/UiState";
 
 export function MenuButton() {
-  const { toggleSidebar } = useUiState();
+  const { openSidebar } = useUiState();
   return (
     <FabButton
       aria-label="Open tools"
-      onClick={toggleSidebar}
+      onClick={openSidebar}
       data-testid="menu-button"
     >
       <PiList size={26} style={{ display: "block", flexShrink: 0 }} />
