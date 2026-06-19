@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMap } from "../lib/MapContext";
 import { PiMagnifyingGlass, PiX, PiMapPin } from "react-icons/pi";
+import { getDistanceMeters } from "../lib/geo";
 
 type StedResult = {
   stedsnummer: number;
@@ -12,24 +13,6 @@ type StedResult = {
 };
 
 type StedResultWithDistance = StedResult & { distanceKm: number | null };
-
-/** Haversine distance in km between two lat/lon points. */
-function haversineKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function formatDistance(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} m`;
@@ -94,11 +77,12 @@ export function LocationSearch({
         const withDist: StedResultWithDistance[] = navn.map((r) => ({
           ...r,
           distanceKm: center
-            ? haversineKm(
-                center.lat,
-                center.lng,
-                r.representasjonspunkt.nord,
-                r.representasjonspunkt.øst,
+            ? getDistanceMeters(
+                { latitude: center.lat, longitude: center.lng },
+                {
+                  latitude: r.representasjonspunkt.nord,
+                  longitude: r.representasjonspunkt.øst,
+                },
               )
             : null,
         }));
@@ -189,7 +173,10 @@ export function LocationSearch({
         )}
 
         {results.length > 0 && (
-          <ul className="list-none p-0 rounded-secondary border border-gray-200 max-h-50 overflow-y-auto bg-white absolute top-0 left-0 right-0 z-10">
+          <ul
+            className="list-none p-0 rounded-secondary border border-gray-200 max-h-50 overflow-y-auto bg-white absolute top-0 left-0 right-0 z-10"
+            data-testid="search-results"
+          >
             {results.map((r, i) => (
               <li key={r.stedsnummer}>
                 <button
@@ -197,7 +184,7 @@ export function LocationSearch({
                   className="flex items-start gap-2 w-full px-3 py-2.5 bg-none border-0 text-left cursor-pointer text-xs text-dark-900 leading-relaxed"
                   style={{ borderTop: i === 0 ? "none" : "1px solid #f3f4f6" }}
                 >
-                  <span className="mt-0.5 text-gray-400 flex-shrink-0">
+                  <span className="mt-0.5 text-gray-400 shrink-0">
                     <PiMapPin size={14} className="block" />
                   </span>
                   <span className="flex-1 min-w-0">
@@ -207,7 +194,7 @@ export function LocationSearch({
                     </span>
                   </span>
                   {r.distanceKm != null && (
-                    <span className="text-2xs text-gray-400 flex-shrink-0 self-center ml-1">
+                    <span className="text-2xs text-gray-400 shrink-0 self-center ml-1">
                       {formatDistance(r.distanceKm)}
                     </span>
                   )}

@@ -10,8 +10,6 @@ A modern, offline-capable hiking map application built with Vite, React, and Typ
 - **Location Search** - Search for places, peaks, and regions using Geonorge API
 - **Coordinates Display** - View and interact with current coordinates (latitude, longitude, elevation)
 - **User Location** - Display your current location on the map with GPS tracking
-- **Compass Navigation** - Visual compass showing magnetic bearing direction
-- **Crosshair Indicator** - Center point reference on the map
 
 ### 🏔️ Hiking Information
 
