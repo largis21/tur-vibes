@@ -47,7 +47,7 @@ export function CoordsBox() {
           }
         }}
         aria-label="Go to coordinate"
-        className="absolute left-4 bottom-9 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left cursor-pointer hover:bg-dark-900 transition-colors"
+        className="absolute left-3 bottom-5 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left cursor-pointer hover:bg-dark-900 transition-colors"
       >
         <Row 
           label={copiedLabel === "Cursor" ? "✓ Copied" : "Cursor"} 

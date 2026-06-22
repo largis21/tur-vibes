@@ -9,6 +9,7 @@ export type DefaultUiKey =
   | "compass"
   | "coordsBox"
   | "steepnessButton"
+  | "baseLayerButton"
   | "locateButton"
   | "searchButton"
   | "menuButton";

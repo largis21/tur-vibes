@@ -5,6 +5,7 @@ import { LocateButton } from "./LocateButton";
 import { MenuButton } from "./MenuButton";
 import { SearchButton } from "./SearchButton";
 import { SteepnessButton } from "./SteepnessButton";
+import { BaseLayerButton } from "./BaseLayerButton";
 import { PiFunnel } from "react-icons/pi";
 import { usePointInfo } from "../lib/PointInfoContext";
 import { usePoi } from "../tools/poi/context";
@@ -44,6 +45,7 @@ export function DefaultUi({
     [
       ["searchButton", <SearchButton key="search" />],
       ["steepnessButton", <SteepnessButton key="steepness" />],
+      ["baseLayerButton", <BaseLayerButton key="baseLayer" />],
       ["locateButton", <LocateButton key="locate" />],
       ["menuButton", <MenuButton key="menu" />],
     ] as const
@@ -58,7 +60,7 @@ export function DefaultUi({
       ) : null}
       {has("coordsBox") && !hideNonCompass ? <CoordsBox /> : null}
       {(fabButtons.length > 0 || hasActivePoiFilter) && !hideNonCompass ? (
-        <div className="absolute right-5 bottom-10 flex flex-col gap-3 z-30">
+        <div className="absolute right-3 bottom-5 flex flex-col gap-2 z-30">
           {hasActivePoiFilter && (
             <FabButton
               aria-label="Active POI filters — tap to manage"

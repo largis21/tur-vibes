@@ -24,7 +24,7 @@ import { getOfflineTileTemplate } from "../lib/offlineTiles";
 import { loadLastRegion, saveLastRegion } from "../lib/persistedRegion";
 import { usePointInfo } from "../lib/PointInfoContext";
 import { usePoi } from "../tools/poi/context";
-import { getMapSource, basemaps } from "../lib/mapSources";
+import { getMapSource, basemapsForGroup } from "../lib/mapSources";
 import type { Region } from "../lib/types";
 import { useUiState } from "../lib/UiState";
 import { useOffline } from "../tools/offline/context";
@@ -50,7 +50,7 @@ type MapViewProps = {
 
 export function MapView({ activeToolId, children }: MapViewProps) {
   const { mapRef, cursorCoordinate, _publishRegion } = useMap();
-  const { showSteepness, steepnessOpacity } = useUiState();
+  const { showSteepness, steepnessOpacity, baseLayer } = useUiState();
   const {
     open: openPointInfo,
     close: closePointInfo,
@@ -227,8 +227,8 @@ export function MapView({ activeToolId, children }: MapViewProps) {
     >
       {!offlineMode ? (
         <>
-          {/* Render all basemaps (topo, npolars-svalbard, npolars-janmayen, etc.) */}
-          {basemaps().map((src) => (
+          {/* Render basemaps for the active group (topo or satellite) */}
+          {basemapsForGroup(baseLayer).map((src) => (
             <Source
               key={`${src.id}-online`}
               id={`${src.id}-online`}
@@ -281,8 +281,8 @@ export function MapView({ activeToolId, children }: MapViewProps) {
 
       {offlineMode ? (
         <>
-          {/* Render all basemaps in offline mode */}
-          {basemaps().map((src) => (
+          {/* Render basemaps for the active group in offline mode */}
+          {basemapsForGroup(baseLayer).map((src) => (
             <Source
               key={`${src.id}-offline-${tilesVersion}`}
               id={`${src.id}-offline`}

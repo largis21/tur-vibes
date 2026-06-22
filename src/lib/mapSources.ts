@@ -14,6 +14,11 @@ export type MapSource = {
   id: string;
   /** "basemap" = mutually exclusive backgrounds; "overlay" = renders on top. */
   kind: MapSourceKind;
+  /**
+   * Mutually exclusive group for basemaps. Only basemaps belonging to the
+   * active group are rendered at any given time. Defaults to "topo".
+   */
+  group?: "topo" | "satellite";
   /** UI label. */
   label: string;
   /** Attribution text (HTML allowed). */
@@ -46,6 +51,7 @@ export const MAP_SOURCES: MapSource[] = [
   {
     id: "npolars-svalbard",
     kind: "basemap",
+    group: "topo",
     label: "Svalbard base map (Norsk Polarinstitutt)",
     attribution: "© Norsk Polarinstitutt (CC BY 4.0)",
     online: {
@@ -70,6 +76,7 @@ export const MAP_SOURCES: MapSource[] = [
   {
     id: "npolars-janmayen",
     kind: "basemap",
+    group: "topo",
     label: "Jan Mayen base map (Norsk Polarinstitutt)",
     attribution: "© Norsk Polarinstitutt (CC BY 4.0)",
     online: {
@@ -94,6 +101,7 @@ export const MAP_SOURCES: MapSource[] = [
   {
     id: "topo",
     kind: "basemap",
+    group: "topo",
     label: "Topographic map (Kartverket)",
     attribution: "© Kartverket",
     online: {
@@ -112,6 +120,26 @@ export const MAP_SOURCES: MapSource[] = [
       maxLon: 32,
       maxLat: 72,
     },
+  },
+
+  {
+    id: "satellite",
+    kind: "basemap",
+    group: "satellite",
+    label: "Satellite imagery (Esri)",
+    attribution:
+      "© Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    online: {
+      urlTemplate:
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      tileSize: 256,
+      scheme: "xyz",
+    },
+    offline: {
+      protocol: "offline-satellite",
+      maxZoom: 18,
+    },
+    maxZoom: 18,
   },
 
   {
@@ -145,6 +173,17 @@ export function getMapSource(id: string): MapSource | undefined {
  */
 export function basemaps(): MapSource[] {
   return MAP_SOURCES.filter((s) => s.kind === "basemap");
+}
+
+/**
+ * All basemaps belonging to the given group.
+ */
+export function basemapsForGroup(
+  group: "topo" | "satellite",
+): MapSource[] {
+  return MAP_SOURCES.filter(
+    (s) => s.kind === "basemap" && (s.group ?? "topo") === group,
+  );
 }
 
 /**

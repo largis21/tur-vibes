@@ -6,7 +6,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { NUMBER_CODEC, STORAGE_KEYS, usePersistedState } from "./storage";
+import { NUMBER_CODEC, STORAGE_KEYS, STRING_CODEC, usePersistedState } from "./storage";
+
+export type BaseLayer = "topo" | "satellite";
 
 type UiState = {
   showSteepness: boolean;
@@ -15,6 +17,10 @@ type UiState = {
   /** Opacity of the steepness raster layer when shown (0..1). */
   steepnessOpacity: number;
   setSteepnessOpacity: (value: number) => void;
+  /** Active base-layer group. */
+  baseLayer: BaseLayer;
+  setBaseLayer: (value: BaseLayer) => void;
+  toggleBaseLayer: () => void;
   sidebarOpen: boolean;
   openSidebar: () => void;
   closeSidebar: () => void;
@@ -51,6 +57,23 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
     [setSteepnessOpacityRaw],
   );
 
+  const [baseLayer, setBaseLayerRaw] = usePersistedState<BaseLayer>(
+    STORAGE_KEYS.baseLayer,
+    "topo",
+    {
+      codec: STRING_CODEC as { parse: (r: string) => BaseLayer; stringify: (v: BaseLayer) => string },
+      validate: (v): v is BaseLayer => v === "topo" || v === "satellite",
+    },
+  );
+  const setBaseLayer = useCallback(
+    (value: BaseLayer) => setBaseLayerRaw(value),
+    [setBaseLayerRaw],
+  );
+  const toggleBaseLayer = useCallback(
+    () => setBaseLayerRaw((v) => (v === "topo" ? "satellite" : "topo")),
+    [setBaseLayerRaw],
+  );
+
   const toggleSteepness = useCallback(() => setShowSteepness((v) => !v), []);
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -63,6 +86,9 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
       toggleSteepness,
       steepnessOpacity,
       setSteepnessOpacity,
+      baseLayer,
+      setBaseLayer,
+      toggleBaseLayer,
       sidebarOpen,
       openSidebar,
       closeSidebar,
@@ -73,6 +99,9 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
       toggleSteepness,
       steepnessOpacity,
       setSteepnessOpacity,
+      baseLayer,
+      setBaseLayer,
+      toggleBaseLayer,
       sidebarOpen,
       openSidebar,
       closeSidebar,

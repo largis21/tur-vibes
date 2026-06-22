@@ -15,6 +15,7 @@ export const defaultTool = defineTool({
     "coordsBox",
     "menuButton",
     "steepnessButton",
+    "baseLayerButton",
     "locateButton",
     "searchButton",
   ],

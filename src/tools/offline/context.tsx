@@ -35,6 +35,7 @@ const DEFAULT_MAX_ZOOM_BY_SOURCE = {
   steepness: 15,
   "npolars-svalbard": 16,
   "npolars-janmayen": 15,
+  satellite: 16,
 } as const;
 
 export type OfflineContextValue = {

@@ -36,12 +36,56 @@ export function GotoModal({
   const [error, setError] = useState<string | null>(null);
   const [copiedButton, setCopiedButton] = useState<string | null>(null);
   const latRef = useRef<HTMLInputElement | null>(null);
+  const lonRef = useRef<HTMLInputElement | null>(null);
   const userPosition = useGeoLocation((state) => state.userPosition);
 
   useEffect(() => {
     latRef.current?.focus();
     latRef.current?.select();
   }, []);
+
+  function handleLatChange(value: string) {
+    setLat(value);
+  }
+
+  function handleLatKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === ",") {
+      e.preventDefault();
+      lonRef.current?.focus();
+      lonRef.current?.select();
+    }
+  }
+
+  function handleLatPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    const parts = text.split(/[\s,;]+/).filter(Boolean);
+    if (parts.length === 2) {
+      e.preventDefault();
+      setLat(parts[0]!);
+      setLon(parts[1]!);
+      setTimeout(() => lonRef.current?.focus(), 0);
+    }
+  }
+
+  function handleLonChange(value: string) {
+    setLon(value);
+  }
+
+  function handleLonKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === ",") {
+      e.preventDefault();
+    }
+  }
+
+  function handleLonPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    const parts = text.split(/[\s,;]+/).filter(Boolean);
+    if (parts.length === 2) {
+      e.preventDefault();
+      setLat(parts[0]!);
+      setLon(parts[1]!);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,14 +127,19 @@ export function GotoModal({
           label="Latitude"
           inputRef={latRef}
           value={lat}
-          onChange={setLat}
+          onChange={handleLatChange}
+          onKeyDown={handleLatKeyDown}
+          onPaste={handleLatPaste}
           placeholder="60.39130"
           inputMode="decimal"
         />
         <Field
           label="Longitude"
+          inputRef={lonRef}
           value={lon}
-          onChange={setLon}
+          onChange={handleLonChange}
+          onKeyDown={handleLonKeyDown}
+          onPaste={handleLonPaste}
           placeholder="5.32210"
           inputMode="decimal"
         />
@@ -184,6 +233,8 @@ function Field({
   placeholder,
   inputMode,
   inputRef,
+  onKeyDown,
+  onPaste,
 }: {
   label: string;
   value: string;
@@ -191,6 +242,8 @@ function Field({
   placeholder?: string;
   inputMode?: "decimal" | "text";
   inputRef?: MutableRefObject<HTMLInputElement | null>;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLInputElement>) => void;
 }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -203,6 +256,8 @@ function Field({
         inputMode={inputMode}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        onPaste={onPaste}
         placeholder={placeholder}
         style={{
           padding: "10px 12px",
