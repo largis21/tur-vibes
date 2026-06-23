@@ -8,6 +8,13 @@ export type SavedOfflineRegion = {
   /** Which source IDs (e.g. "topo", "steepness", "npolars-svalbard") have cached tiles for this region.
    *  Defaults to ["topo", "steepness"] for backwards compatibility with legacy saved regions. */
   sourceIds: string[];
+  /** Exact tile keys ("sourceId/z/x/y") downloaded for this region.
+   *  Empty for legacy regions — fall back to geometry-based deletion in that case. */
+  tileKeys: string[];
+  /** Min zoom used when downloading tiles. */
+  minZoom: number;
+  /** Max zoom per source used when downloading tiles. */
+  maxZoomBySource: Record<string, number>;
 };
 
 type LegacyBounds = {
@@ -70,7 +77,23 @@ function normalize(value: unknown): SavedOfflineRegion | null {
       : ["topo", "steepness"]
     : ["topo", "steepness"];
 
-  return { id: r.id, polygon, createdAt, sourceIds };
+  // Backwards compatibility: tileKeys, minZoom, maxZoomBySource are optional
+  const tileKeys =
+    Array.isArray(r.tileKeys) &&
+    (r.tileKeys as unknown[]).every((k) => typeof k === "string")
+      ? (r.tileKeys as string[])
+      : [];
+
+  const minZoom = typeof r.minZoom === "number" ? r.minZoom : 11;
+
+  const maxZoomBySource: Record<string, number> =
+    r.maxZoomBySource &&
+    typeof r.maxZoomBySource === "object" &&
+    !Array.isArray(r.maxZoomBySource)
+      ? (r.maxZoomBySource as Record<string, number>)
+      : {};
+
+  return { id: r.id, polygon, createdAt, sourceIds, tileKeys, minZoom, maxZoomBySource };
 }
 
 export function loadSavedRegions(): SavedOfflineRegion[] {
@@ -86,12 +109,18 @@ function writeRegions(regions: SavedOfflineRegion[]) {
 export function addSavedRegion(
   polygon: LatLng[],
   sourceIds: string[] = ["topo", "steepness"],
+  tileKeys: string[] = [],
+  minZoom: number = 11,
+  maxZoomBySource: Record<string, number> = {},
 ): SavedOfflineRegion {
   const region: SavedOfflineRegion = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     polygon,
     createdAt: Date.now(),
     sourceIds,
+    tileKeys,
+    minZoom,
+    maxZoomBySource,
   };
   const regions = [...loadSavedRegions(), region];
   writeRegions(regions);

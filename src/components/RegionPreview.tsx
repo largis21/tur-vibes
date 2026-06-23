@@ -19,7 +19,7 @@ type Props = {
 
 /**
  * Renders a tiny preview of a saved offline region by stitching cached topo
- * tiles from IndexedDB onto a canvas, masked to the polygon shape.
+ * tiles from IndexedDB onto a canvas.
  */
 export function RegionPreview({ polygon, width, height }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,44 +44,30 @@ export function RegionPreview({ polygon, width, height }: Props) {
     const xMaxF = lonToTileXFloat(bbox.maxLon, PREVIEW_ZOOM);
     const yMinF = latToTileYFloat(bbox.maxLat, PREVIEW_ZOOM);
     const yMaxF = latToTileYFloat(bbox.minLat, PREVIEW_ZOOM);
-    const srcW = (xMaxF - xMinF) * TILE_SIZE;
-    const srcH = (yMaxF - yMinF) * TILE_SIZE;
-    if (srcW <= 0 || srcH <= 0) return;
 
-    // Fit while preserving aspect ratio (letterboxed on the fill bg).
-    const scale = Math.min(width / srcW, height / srcH);
-    const drawW = srcW * scale;
-    const drawH = srcH * scale;
+    const xMin = Math.floor(xMinF);
+    const xMax = Math.ceil(xMaxF);
+    const yMin = Math.floor(yMinF);
+    const yMax = Math.ceil(yMaxF);
+
+    const tilesX = xMax - xMin;
+    const tilesY = yMax - yMin;
+
+    if (tilesX <= 0 || tilesY <= 0) return;
+
+    // Scale to fit all tiles in the canvas while preserving aspect ratio
+    const scale = Math.min(
+      width / (tilesX * TILE_SIZE),
+      height / (tilesY * TILE_SIZE),
+    );
+    const drawW = tilesX * TILE_SIZE * scale;
+    const drawH = tilesY * TILE_SIZE * scale;
     const offsetX = (width - drawW) / 2;
     const offsetY = (height - drawH) / 2;
 
-    function projectLatLngToCanvas(p: LatLng): [number, number] {
-      const tx = lonToTileXFloat(p.longitude, PREVIEW_ZOOM);
-      const ty = latToTileYFloat(p.latitude, PREVIEW_ZOOM);
-      return [
-        (tx - xMinF) * TILE_SIZE * scale + offsetX,
-        (ty - yMinF) * TILE_SIZE * scale + offsetY,
-      ];
-    }
-
-    const xMin = Math.floor(xMinF);
-    const xMax = Math.floor(xMaxF);
-    const yMin = Math.floor(yMinF);
-    const yMax = Math.floor(yMaxF);
-
     (async () => {
-      ctx.save();
-      ctx.beginPath();
-      polygon.forEach((p, i) => {
-        const [cx, cy] = projectLatLngToCanvas(p);
-        if (i === 0) ctx.moveTo(cx, cy);
-        else ctx.lineTo(cx, cy);
-      });
-      ctx.closePath();
-      ctx.clip();
-
-      for (let ty = yMin; ty <= yMax; ty++) {
-        for (let tx = xMin; tx <= xMax; tx++) {
+      for (let ty = yMin; ty < yMax; ty++) {
+        for (let tx = xMin; tx < xMax; tx++) {
           const buf = await getOfflineTile("topo", PREVIEW_ZOOM, tx, ty);
           if (cancelled || !buf) continue;
           const blob = new Blob([buf]);
@@ -95,15 +81,14 @@ export function RegionPreview({ polygon, width, height }: Props) {
             bitmap.close?.();
             continue;
           }
-          const tileX = (tx - xMinF) * TILE_SIZE * scale + offsetX;
-          const tileY = (ty - yMinF) * TILE_SIZE * scale + offsetY;
+          const tileX = (tx - xMin) * TILE_SIZE * scale + offsetX;
+          const tileY = (ty - yMin) * TILE_SIZE * scale + offsetY;
           const tileW = TILE_SIZE * scale;
           const tileH = TILE_SIZE * scale;
           ctx.drawImage(bitmap, tileX, tileY, tileW, tileH);
           bitmap.close?.();
         }
       }
-      ctx.restore();
     })();
 
     return () => {

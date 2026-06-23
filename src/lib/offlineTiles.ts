@@ -36,7 +36,7 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-function tileKey(sourceId: string, z: number, x: number, y: number) {
+export function tileKey(sourceId: string, z: number, x: number, y: number) {
   return `${sourceId}/${z}/${x}/${y}`;
 }
 
@@ -546,6 +546,41 @@ export async function clearTilesInPolygon(
         deleted += 1;
       }
     }
+  }
+
+  return deleted;
+}
+
+/**
+ * Delete tiles that belong exclusively to `targetTileKeys` and are not
+ * referenced by any of the `otherRegionsTileKeys` sets.
+ *
+ * For legacy regions with an empty `targetTileKeys`, this is a no-op — the
+ * caller should fall back to `clearTilesInPolygon` in that case.
+ */
+export async function deleteTilesExclusiveTo(
+  targetTileKeys: string[],
+  otherRegionsTileKeys: string[][],
+): Promise<number> {
+  if (targetTileKeys.length === 0) return 0;
+
+  // Build a Set of every key still needed by another region
+  const retained = new Set<string>();
+  for (const keys of otherRegionsTileKeys) {
+    for (const k of keys) {
+      retained.add(k);
+    }
+  }
+
+  let deleted = 0;
+  for (const key of targetTileKeys) {
+    if (retained.has(key)) continue;
+    // key format: "sourceId/z/x/y"
+    const parts = key.split("/");
+    if (parts.length !== 4) continue;
+    const [sourceId, zStr, xStr, yStr] = parts as [string, string, string, string];
+    await deleteTile(sourceId, Number(zStr), Number(xStr), Number(yStr));
+    deleted += 1;
   }
 
   return deleted;

@@ -145,7 +145,7 @@ export const MAP_SOURCES: MapSource[] = [
   {
     id: "steepness",
     kind: "overlay",
-    label: "Avalanche risk (NVE)",
+    label: "Steepness (NVE)",
     attribution: "© NVE",
     online: {
       urlTemplate:

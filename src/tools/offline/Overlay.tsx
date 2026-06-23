@@ -29,6 +29,7 @@ export function OfflineOverlay() {
   } = offline;
 
   const [mode, setMode] = useState<Mode>("list");
+  const [areaLocked, setAreaLocked] = useState(false);
   const wasDownloading = useRef(false);
 
   // After a download finishes, the context clears the polygon. Return to
@@ -42,6 +43,7 @@ export function OfflineOverlay() {
 
   function enterCreate() {
     clearPolygon();
+    setAreaLocked(false);
     setMode("create");
   }
 
@@ -52,6 +54,7 @@ export function OfflineOverlay() {
       return;
     }
     clearPolygon();
+    setAreaLocked(false);
     setMode("list");
   }
 
@@ -71,10 +74,16 @@ export function OfflineOverlay() {
         selfIntersecting={selfIntersecting}
         downloading={downloading}
         progress={progress}
+        locked={areaLocked}
         onAdd={addPolygonPoint}
         onUndo={removeLastPolygonPoint}
-        onClear={clearPolygon}
+        onClear={() => {
+          clearPolygon();
+          setAreaLocked(false);
+        }}
         onBack={exitCreate}
+        onSetArea={() => setAreaLocked(true)}
+        onEditArea={() => setAreaLocked(false)}
         onDownload={startDownload}
         onCancelDownload={cancelDownload}
       />

@@ -49,13 +49,13 @@ export function CoordsBox() {
         aria-label="Go to coordinate"
         className="absolute left-3 bottom-5 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left cursor-pointer hover:bg-dark-900 transition-colors"
       >
-        <Row 
-          label={copiedLabel === "Cursor" ? "✓ Copied" : "Cursor"} 
+        <Row
+          label={copiedLabel === "Cursor" ? "✓ Copied" : "Cursor"}
           value={formatCoord(cursor)}
           onCopy={() => handleCopyCoords("Cursor")}
           copied={copiedLabel === "Cursor"}
         />
-        <Row 
+        <Row
           label={copiedLabel === "You" ? "✓ Copied" : "You"}
           value={formatCoord(userPosition)}
           onCopy={() => handleCopyCoords("You")}
@@ -79,7 +79,17 @@ export function CoordsBox() {
   );
 }
 
-function Row({ label, value, onCopy, copied }: { label: string; value: string; onCopy?: () => void; copied?: boolean }) {
+function Row({
+  label,
+  value,
+  onCopy,
+  copied,
+}: {
+  label: string;
+  value: string;
+  onCopy?: () => void;
+  copied?: boolean;
+}) {
   return (
     <div className="flex flex-col">
       <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
