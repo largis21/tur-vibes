@@ -9,8 +9,18 @@ import {
 } from "react";
 import { useMap, useMapRegion } from "../../lib/MapContext";
 import type { LatLng } from "../../lib/types";
+import { fetchElevations } from "../../lib/elevation";
+import {
+  getTotalDistanceMeters,
+  samplePointsAlongPath,
+} from "../../lib/geo";
 
 type MarkerPosition = { x: number; y: number };
+
+export type ElevationSample = {
+  distanceMeters: number;
+  elevation: number | null;
+};
 
 type MeasureContextValue = {
   points: LatLng[];
@@ -19,6 +29,8 @@ type MeasureContextValue = {
   addPoint: () => void;
   removeLastPoint: () => void;
   clear: () => void;
+  elevationProfile: ElevationSample[] | null;
+  elevationLoading: boolean;
 };
 
 const MeasureContext = createContext<MeasureContextValue | null>(null);
@@ -35,6 +47,8 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
   const { mapRef, cursorCoordinate } = useMap();
   const [points, setPoints] = useState<LatLng[]>([]);
   const [markerPositions, setMarkerPositions] = useState<MarkerPosition[]>([]);
+  const [elevationProfile, setElevationProfile] = useState<ElevationSample[] | null>(null);
+  const [elevationLoading, setElevationLoading] = useState(false);
 
   // Re-render whenever the cursor (map center) lat/lon changes.
   const cursorPosition = useMapRegion<LatLng>(
@@ -85,7 +99,39 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(() => {
     setPoints([]);
     setMarkerPositions([]);
+    setElevationProfile(null);
   }, []);
+
+  // Fetch elevation profile whenever the committed points change.
+  useEffect(() => {
+    if (points.length < 2) {
+      setElevationProfile(null);
+      return;
+    }
+    const totalDist = getTotalDistanceMeters(points);
+    const sampleCount = Math.min(60, Math.max(10, Math.round(totalDist / 100)));
+    const sampledPoints = samplePointsAlongPath(points, sampleCount);
+
+    const controller = new AbortController();
+    setElevationLoading(true);
+
+    fetchElevations(sampledPoints, controller.signal)
+      .then((elevations) => {
+        const profile: ElevationSample[] = sampledPoints.map((_, i) => ({
+          distanceMeters: (i / (sampleCount - 1)) * totalDist,
+          elevation: elevations[i],
+        }));
+        setElevationProfile(profile);
+      })
+      .catch(() => {
+        // Ignore aborted requests
+      })
+      .finally(() => {
+        setElevationLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [points]);
 
   const value = useMemo(
     () => ({
@@ -95,8 +141,10 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
       addPoint,
       removeLastPoint,
       clear,
+      elevationProfile,
+      elevationLoading,
     }),
-    [points, markerPositions, cursorPosition, addPoint, removeLastPoint, clear],
+    [points, markerPositions, cursorPosition, addPoint, removeLastPoint, clear, elevationProfile, elevationLoading],
   );
 
   return (

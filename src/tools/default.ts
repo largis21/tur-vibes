@@ -16,6 +16,7 @@ export const defaultTool = defineTool({
     "menuButton",
     "steepnessButton",
     "baseLayerButton",
+    "terrainButton",
     "locateButton",
     "searchButton",
   ],

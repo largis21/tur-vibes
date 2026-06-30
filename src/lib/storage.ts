@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   lists: "tur-vibes:lists",
   logs: "tur-vibes:logs",
   baseLayer: "tur-vibes:base-layer",
+  show3DTerrain: "tur-vibes:show-3d-terrain",
 } as const;
 
 /** Read a raw string. Returns null on any failure (private mode, missing). */

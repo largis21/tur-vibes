@@ -45,3 +45,45 @@ export function metersPerPixel(latitude: number, zoom: number): number {
     (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / Math.pow(2, zoom)
   );
 }
+
+/**
+ * Returns `count` evenly-spaced LatLng points sampled along the multi-segment
+ * path. Requires at least 2 points and count >= 2.
+ */
+export function samplePointsAlongPath(
+  points: LatLng[],
+  count: number,
+): LatLng[] {
+  if (points.length < 2 || count < 2) return [...points];
+
+  const cumDist: number[] = [0];
+  for (let i = 1; i < points.length; i++) {
+    cumDist.push(cumDist[i - 1] + getDistanceMeters(points[i - 1], points[i]));
+  }
+  const total = cumDist[cumDist.length - 1];
+
+  if (total === 0) {
+    return Array.from({ length: count }, () => ({ ...points[0] }));
+  }
+
+  const result: LatLng[] = [];
+  for (let i = 0; i < count; i++) {
+    const targetDist = (i / (count - 1)) * total;
+    let segIdx = cumDist.length - 2;
+    for (let j = 0; j < cumDist.length - 1; j++) {
+      if (targetDist <= cumDist[j + 1]) {
+        segIdx = j;
+        break;
+      }
+    }
+    const segLen = cumDist[segIdx + 1] - cumDist[segIdx];
+    const t = segLen === 0 ? 0 : (targetDist - cumDist[segIdx]) / segLen;
+    const p0 = points[segIdx];
+    const p1 = points[segIdx + 1];
+    result.push({
+      latitude: p0.latitude + t * (p1.latitude - p0.latitude),
+      longitude: p0.longitude + t * (p1.longitude - p0.longitude),
+    });
+  }
+  return result;
+}

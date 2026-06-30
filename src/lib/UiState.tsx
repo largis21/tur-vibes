@@ -25,6 +25,8 @@ type UiState = {
   openSidebar: () => void;
   closeSidebar: () => void;
   toggleSidebar: () => void;
+  show3DTerrain: boolean;
+  toggle3DTerrain: () => void;
 };
 
 const UiStateContext = createContext<UiState | null>(null);
@@ -79,6 +81,20 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
 
+  const [show3DTerrainRaw, setShow3DTerrainRaw] = usePersistedState<boolean>(
+    STORAGE_KEYS.show3DTerrain,
+    false,
+    {
+      codec: { parse: (v) => v === "true", stringify: (v) => String(v) },
+      validate: (v): v is boolean => typeof v === "boolean",
+    },
+  );
+  const show3DTerrain = Boolean(show3DTerrainRaw);
+  const toggle3DTerrain = useCallback(
+    () => setShow3DTerrainRaw((v) => !v),
+    [setShow3DTerrainRaw],
+  );
+
   const value = useMemo<UiState>(
     () => ({
       showSteepness,
@@ -93,6 +109,8 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
       openSidebar,
       closeSidebar,
       toggleSidebar,
+      show3DTerrain,
+      toggle3DTerrain,
     }),
     [
       showSteepness,
@@ -106,6 +124,8 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
       openSidebar,
       closeSidebar,
       toggleSidebar,
+      show3DTerrain,
+      toggle3DTerrain,
     ],
   );
 

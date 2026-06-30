@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMap, useMapRegion } from "../lib/MapContext";
 import type { LatLng } from "../lib/types";
 import { GotoModal } from "./GotoModal";
 import { useGeoLocation } from "../state/geoLocation/useGeoLocation";
+import { bearingBetween } from "../lib/geoBearing";
+import { getDistanceMeters, formatDistance } from "../lib/geo";
+import { fetchPointInfo, type PointInfo } from "../lib/elevation";
 
 function formatCoord(coord: (LatLng & { accuracy?: number }) | null) {
   if (!coord) return "—";
@@ -24,6 +27,34 @@ export function CoordsBox() {
     },
     (a, b) => a.latitude === b.latitude && a.longitude === b.longitude,
   );
+
+  const [pointInfo, setPointInfo] = useState<PointInfo | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      fetchPointInfo(cursor, 30, controller.signal)
+        .then((info) => setPointInfo(info))
+        .catch(() => {});
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [cursor]);
+
+  const bearingInfo = useMemo(() => {
+    if (!userPosition) return null;
+    const bearing = bearingBetween(userPosition, cursor);
+    const dist = getDistanceMeters(userPosition, cursor);
+    const cardinals = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    const cardinal = cardinals[Math.round(bearing / 45) % 8];
+    return `${Math.round(bearing)}°${cardinal}, ${formatDistance(dist).replace(' ', '')}`;
+  }, [userPosition, cursor]);
 
   function handleCopyCoords(label: "Cursor" | "You") {
     const coord = label === "Cursor" ? cursor : userPosition;
@@ -47,7 +78,7 @@ export function CoordsBox() {
           }
         }}
         aria-label="Go to coordinate"
-        className="absolute left-3 bottom-5 bg-dark-900/75 rounded-lg px-3 py-2 flex flex-col items-start gap-1 z-20 text-left cursor-pointer hover:bg-dark-900 transition-colors"
+        className="absolute left-3 bottom-5 bg-dark-900/75 rounded-lg px-2 py-1.5 flex flex-col items-start gap-0 z-20 text-left cursor-pointer hover:bg-dark-900 transition-colors"
       >
         <Row
           label={copiedLabel === "Cursor" ? "✓ Copied" : "Cursor"}
@@ -55,12 +86,29 @@ export function CoordsBox() {
           onCopy={() => handleCopyCoords("Cursor")}
           copied={copiedLabel === "Cursor"}
         />
+        {bearingInfo && (
+          <span className="text-white font-mono text-[10px] font-medium leading-normal">
+            {bearingInfo}
+          </span>
+        )}
+        {pointInfo && (
+          <span className="text-white font-mono text-[10px] font-medium leading-normal">
+            {pointInfo.elevation !== null ? `${Math.round(pointInfo.elevation)}m` : ""}
+            {pointInfo.elevation !== null && pointInfo.slopeDeg !== null ? ", " : ""}
+            {pointInfo.slopeDeg !== null ? `${Math.round(pointInfo.slopeDeg)}°` : ""}
+          </span>
+        )}
         <Row
           label={copiedLabel === "You" ? "✓ Copied" : "You"}
           value={formatCoord(userPosition)}
           onCopy={() => handleCopyCoords("You")}
           copied={copiedLabel === "You"}
         />
+        {userPosition?.altitude != null && (
+          <span className="text-white font-mono text-[10px] font-medium leading-normal">
+            {`${Math.round(userPosition.altitude)}m GPS`}
+          </span>
+        )}
       </div>
       {gotoOpen && (
         <GotoModal
@@ -92,7 +140,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-col">
-      <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">
+      <span className="text-gray-400 text-[9px] font-semibold uppercase tracking-wider">
         {label}
       </span>
       <span
@@ -109,7 +157,7 @@ function Row({
           }
         }}
         title="Click to copy"
-        className={`text-white font-mono text-xs font-medium leading-normal text-left cursor-pointer transition-colors ${
+        className={`text-white font-mono text-[10px] font-medium leading-normal text-left cursor-pointer transition-colors ${
           copied ? "text-green-400" : "hover:text-blue-300"
         }`}
       >

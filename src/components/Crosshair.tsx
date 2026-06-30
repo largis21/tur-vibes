@@ -10,22 +10,23 @@ export function Crosshair({ visible = true }: { visible?: boolean }) {
         justifyContent: "center",
         pointerEvents: "none",
         zIndex: 5,
+        mixBlendMode: "difference",
       }}
     >
       <div
         style={{
           position: "absolute",
-          backgroundColor: "#111827",
-          height: 1.5,
-          width: 32,
+          backgroundColor: "#ffffff",
+          height: 1,
+          width: 20,
         }}
       />
       <div
         style={{
           position: "absolute",
-          backgroundColor: "#111827",
-          width: 1.5,
-          height: 32,
+          backgroundColor: "#ffffff",
+          width: 1,
+          height: 20,
         }}
       />
     </div>

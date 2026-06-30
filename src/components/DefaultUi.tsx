@@ -6,6 +6,7 @@ import { MenuButton } from "./MenuButton";
 import { SearchButton } from "./SearchButton";
 import { SteepnessButton } from "./SteepnessButton";
 import { BaseLayerButton } from "./BaseLayerButton";
+import { TerrainButton } from "./TerrainButton";
 import { PiFunnel } from "react-icons/pi";
 import { usePointInfo } from "../lib/PointInfoContext";
 import { usePoi } from "../tools/poi/context";
@@ -46,6 +47,7 @@ export function DefaultUi({
       ["searchButton", <SearchButton key="search" />],
       ["steepnessButton", <SteepnessButton key="steepness" />],
       ["baseLayerButton", <BaseLayerButton key="baseLayer" />],
+      ["terrainButton", <TerrainButton key="terrain" />],
       ["locateButton", <LocateButton key="locate" />],
       ["menuButton", <MenuButton key="menu" />],
     ] as const

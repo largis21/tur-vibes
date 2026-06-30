@@ -10,6 +10,7 @@ export type DefaultUiKey =
   | "coordsBox"
   | "steepnessButton"
   | "baseLayerButton"
+  | "terrainButton"
   | "locateButton"
   | "searchButton"
   | "menuButton";

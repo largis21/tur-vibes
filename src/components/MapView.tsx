@@ -50,7 +50,7 @@ type MapViewProps = {
 
 export function MapView({ activeToolId, children }: MapViewProps) {
   const { mapRef, cursorCoordinate, _publishRegion } = useMap();
-  const { showSteepness, steepnessOpacity, baseLayer } = useUiState();
+  const { showSteepness, steepnessOpacity, baseLayer, show3DTerrain } = useUiState();
   const {
     open: openPointInfo,
     close: closePointInfo,
@@ -69,6 +69,9 @@ export function MapView({ activeToolId, children }: MapViewProps) {
     }
     wasDownloading.current = downloading;
   }, [downloading]);
+
+  // Apply / remove 3-D terrain whenever the toggle or map-ready state changes.
+  // (removed — now handled declaratively via the terrain prop below)
 
   const handleMove = useCallback(
     (event: ViewStateChangeEvent) => {
@@ -222,6 +225,8 @@ export function MapView({ activeToolId, children }: MapViewProps) {
       onMove={handleMove}
       onMoveEnd={handleMoveEnd}
       attributionControl={false}
+      clickTolerance={1}
+      terrain={show3DTerrain ? { source: "terrain-dem", exaggeration: 1 } : undefined}
       // maxZoom={15.4}
       style={{ position: "absolute", inset: 0 }}
     >
@@ -329,6 +334,15 @@ export function MapView({ activeToolId, children }: MapViewProps) {
         key={`saved-regions-${offlineMode ? "off" : "on"}-${showSteepness ? "s" : "n"}-${tilesVersion}`}
         regions={savedRegions}
         selectionPolygon={activeToolId === "offline" ? polygon : null}
+      />
+      {/* DEM source for 3-D terrain — always mounted so tiles are pre-warmed */}
+      <Source
+        id="terrain-dem"
+        type="raster-dem"
+        tiles={["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"]}
+        tileSize={256}
+        maxzoom={15}
+        encoding="terrarium"
       />
       <UserLocation />
       <CustomPoiLayer />
