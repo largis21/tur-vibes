@@ -175,7 +175,7 @@ export function LocationSearch({
 
         {results.length > 0 && (
           <ul
-            className="list-none p-0 rounded-secondary border border-gray-200 max-h-50 overflow-y-auto bg-white absolute top-0 left-0 right-0 z-10"
+            className="list-none p-0 rounded-secondary border border-gray-200 max-h-50 overflow-y-auto overscroll-contain bg-white absolute top-0 left-0 right-0 z-10"
             data-testid="search-results"
           >
             {results.map((r, i) => (

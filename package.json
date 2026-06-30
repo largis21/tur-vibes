@@ -21,7 +21,7 @@
     "react-dnd-touch-backend": "^16.0.1",
     "react-dom": "^18.3.1",
     "react-icons": "^5.6.0",
-    "react-map-gl": "^7.1.7",
+    "react-map-gl": "^8.1.1",
     "workbox-window": "^7.4.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
