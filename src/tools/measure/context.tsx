@@ -10,10 +10,7 @@ import {
 import { useMap, useMapRegion } from "../../lib/MapContext";
 import type { LatLng } from "../../lib/types";
 import { fetchElevations } from "../../lib/elevation";
-import {
-  getTotalDistanceMeters,
-  samplePointsAlongPath,
-} from "../../lib/geo";
+import { getTotalDistanceMeters, samplePointsAlongPath } from "../../lib/geo";
 
 type MarkerPosition = { x: number; y: number };
 
@@ -47,7 +44,9 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
   const { mapRef, cursorCoordinate } = useMap();
   const [points, setPoints] = useState<LatLng[]>([]);
   const [markerPositions, setMarkerPositions] = useState<MarkerPosition[]>([]);
-  const [elevationProfile, setElevationProfile] = useState<ElevationSample[] | null>(null);
+  const [elevationProfile, setElevationProfile] = useState<
+    ElevationSample[] | null
+  >(null);
   const [elevationLoading, setElevationLoading] = useState(false);
 
   // Re-render whenever the cursor (map center) lat/lon changes.
@@ -144,7 +143,16 @@ export function MeasureProvider({ children }: { children: ReactNode }) {
       elevationProfile,
       elevationLoading,
     }),
-    [points, markerPositions, cursorPosition, addPoint, removeLastPoint, clear, elevationProfile, elevationLoading],
+    [
+      points,
+      markerPositions,
+      cursorPosition,
+      addPoint,
+      removeLastPoint,
+      clear,
+      elevationProfile,
+      elevationLoading,
+    ],
   );
 
   return (

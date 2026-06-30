@@ -9,7 +9,11 @@ import {
 } from "react-icons/pi";
 import { formatBytes, iconButton, primaryButton } from "./OfflineShared";
 import { basemaps, overlays } from "../../lib/mapSources";
-import { useOffline, DEFAULT_MAX_ZOOM_BY_SOURCE, OFFLINE_MIN_ZOOM } from "./context";
+import {
+  useOffline,
+  DEFAULT_MAX_ZOOM_BY_SOURCE,
+  OFFLINE_MIN_ZOOM,
+} from "./context";
 import { useMemo } from "react";
 
 export function CreateView({

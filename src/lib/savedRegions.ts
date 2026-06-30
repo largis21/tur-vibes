@@ -93,7 +93,15 @@ function normalize(value: unknown): SavedOfflineRegion | null {
       ? (r.maxZoomBySource as Record<string, number>)
       : {};
 
-  return { id: r.id, polygon, createdAt, sourceIds, tileKeys, minZoom, maxZoomBySource };
+  return {
+    id: r.id,
+    polygon,
+    createdAt,
+    sourceIds,
+    tileKeys,
+    minZoom,
+    maxZoomBySource,
+  };
 }
 
 export function loadSavedRegions(): SavedOfflineRegion[] {

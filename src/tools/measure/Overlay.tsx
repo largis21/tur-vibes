@@ -7,7 +7,14 @@ import { useMeasure, type ElevationSample } from "./context";
 
 export function MeasureOverlay() {
   const { deactivateTool } = useActiveTool();
-  const { points, addPoint, removeLastPoint, clear, elevationProfile, elevationLoading } = useMeasure();
+  const {
+    points,
+    addPoint,
+    removeLastPoint,
+    clear,
+    elevationProfile,
+    elevationLoading,
+  } = useMeasure();
 
   const distanceMeters = useMemo(
     () => getTotalDistanceMeters(points),
@@ -163,7 +170,9 @@ function ElevationProfile({ profile }: { profile: ElevationSample[] }) {
         current = [];
       }
     } else {
-      current.push(`${toX(s.distanceMeters).toFixed(1)},${toY(s.elevation).toFixed(1)}`);
+      current.push(
+        `${toX(s.distanceMeters).toFixed(1)},${toY(s.elevation).toFixed(1)}`,
+      );
     }
   }
   if (current.length > 0) segments.push(current);

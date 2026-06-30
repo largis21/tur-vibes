@@ -178,9 +178,7 @@ export function basemaps(): MapSource[] {
 /**
  * All basemaps belonging to the given group.
  */
-export function basemapsForGroup(
-  group: "topo" | "satellite",
-): MapSource[] {
+export function basemapsForGroup(group: "topo" | "satellite"): MapSource[] {
   return MAP_SOURCES.filter(
     (s) => s.kind === "basemap" && (s.group ?? "topo") === group,
   );

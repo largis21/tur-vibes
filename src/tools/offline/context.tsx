@@ -261,15 +261,24 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     const snapshot = polygon.slice();
     const sourceSnapshot = selectedSourceIds.slice();
     // Capture the exact tile keys and zoom settings for accurate future deletion
-    const tileKeySnapshot = tiles.map((t) => tileKey(t.sourceId, t.z, t.x, t.y));
-    const maxZoomSnapshot: Record<string, number> = { ...DEFAULT_MAX_ZOOM_BY_SOURCE };
+    const tileKeySnapshot = tiles.map((t) =>
+      tileKey(t.sourceId, t.z, t.x, t.y),
+    );
+    const maxZoomSnapshot: Record<string, number> = {
+      ...DEFAULT_MAX_ZOOM_BY_SOURCE,
+    };
     for (const [sourceId, zoom] of Object.entries(customMaxZoom)) {
       maxZoomSnapshot[sourceId] = zoom;
     }
     // Restrict to only selected sources
     const activeMaxZoom: Record<string, number> = {};
     for (const sourceId of sourceSnapshot) {
-      activeMaxZoom[sourceId] = maxZoomSnapshot[sourceId] ?? DEFAULT_MAX_ZOOM_BY_SOURCE[sourceId as keyof typeof DEFAULT_MAX_ZOOM_BY_SOURCE] ?? 16;
+      activeMaxZoom[sourceId] =
+        maxZoomSnapshot[sourceId] ??
+        DEFAULT_MAX_ZOOM_BY_SOURCE[
+          sourceId as keyof typeof DEFAULT_MAX_ZOOM_BY_SOURCE
+        ] ??
+        16;
     }
     setDownloading(true);
     setProgress({ total: tiles.length, completed: 0, failed: 0 });
@@ -294,46 +303,50 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         handleRef.current = null;
         setStorageBytes(await getOfflineTilesSize());
       });
-  }, [downloading, tiles, polygon, selfIntersecting, selectedSourceIds, customMaxZoom]);
+  }, [
+    downloading,
+    tiles,
+    polygon,
+    selfIntersecting,
+    selectedSourceIds,
+    customMaxZoom,
+  ]);
 
   const cancelDownload = useCallback(() => {
     handleRef.current?.cancel();
   }, []);
 
-  const removeSavedRegion = useCallback(
-    async (id: string) => {
-      // Read from source-of-truth (localStorage) to avoid stale-closure bug
-      const allRegions = loadSavedRegions();
-      const target = allRegions.find((r) => r.id === id);
-      if (!target) return;
-      const otherRegions = allRegions.filter((r) => r.id !== id);
+  const removeSavedRegion = useCallback(async (id: string) => {
+    // Read from source-of-truth (localStorage) to avoid stale-closure bug
+    const allRegions = loadSavedRegions();
+    const target = allRegions.find((r) => r.id === id);
+    if (!target) return;
+    const otherRegions = allRegions.filter((r) => r.id !== id);
 
-      if (target.tileKeys.length > 0) {
-        // New-style region: delete only tiles not used by another region
-        await deleteTilesExclusiveTo(
-          target.tileKeys,
-          otherRegions.map((r) => r.tileKeys),
-        );
-      } else {
-        // Legacy region: fall back to geometry-based deletion
-        const zoomMap =
-          Object.keys(target.maxZoomBySource).length > 0
-            ? target.maxZoomBySource
-            : DEFAULT_MAX_ZOOM_BY_SOURCE;
-        await clearTilesInPolygon(
-          target.polygon,
-          target.minZoom,
-          zoomMap,
-          target.sourceIds,
-        );
-      }
+    if (target.tileKeys.length > 0) {
+      // New-style region: delete only tiles not used by another region
+      await deleteTilesExclusiveTo(
+        target.tileKeys,
+        otherRegions.map((r) => r.tileKeys),
+      );
+    } else {
+      // Legacy region: fall back to geometry-based deletion
+      const zoomMap =
+        Object.keys(target.maxZoomBySource).length > 0
+          ? target.maxZoomBySource
+          : DEFAULT_MAX_ZOOM_BY_SOURCE;
+      await clearTilesInPolygon(
+        target.polygon,
+        target.minZoom,
+        zoomMap,
+        target.sourceIds,
+      );
+    }
 
-      const remaining = removeSavedRegions(new Set([id]));
-      setSavedRegions(remaining);
-      setStorageBytes(await getOfflineTilesSize());
-    },
-    [],
-  );
+    const remaining = removeSavedRegions(new Set([id]));
+    setSavedRegions(remaining);
+    setStorageBytes(await getOfflineTilesSize());
+  }, []);
 
   const value = useMemo<OfflineContextValue>(
     () => ({

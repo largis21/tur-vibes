@@ -53,7 +53,7 @@ export function CoordsBox() {
     const dist = getDistanceMeters(userPosition, cursor);
     const cardinals = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
     const cardinal = cardinals[Math.round(bearing / 45) % 8];
-    return `${Math.round(bearing)}°${cardinal}, ${formatDistance(dist).replace(' ', '')}`;
+    return `${Math.round(bearing)}°${cardinal}, ${formatDistance(dist).replace(" ", "")}`;
   }, [userPosition, cursor]);
 
   function handleCopyCoords(label: "Cursor" | "You") {
@@ -93,9 +93,15 @@ export function CoordsBox() {
         )}
         {pointInfo && (
           <span className="text-white font-mono text-[10px] font-medium leading-normal">
-            {pointInfo.elevation !== null ? `${Math.round(pointInfo.elevation)}m` : ""}
-            {pointInfo.elevation !== null && pointInfo.slopeDeg !== null ? ", " : ""}
-            {pointInfo.slopeDeg !== null ? `${Math.round(pointInfo.slopeDeg)}°` : ""}
+            {pointInfo.elevation !== null
+              ? `${Math.round(pointInfo.elevation)}m`
+              : ""}
+            {pointInfo.elevation !== null && pointInfo.slopeDeg !== null
+              ? ", "
+              : ""}
+            {pointInfo.slopeDeg !== null
+              ? `${Math.round(pointInfo.slopeDeg)}°`
+              : ""}
           </span>
         )}
         <Row

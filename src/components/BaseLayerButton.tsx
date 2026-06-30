@@ -9,7 +9,9 @@ export function BaseLayerButton() {
   return (
     <FabButton
       aria-label={
-        isSatellite ? "Switch to topographic map" : "Switch to satellite imagery"
+        isSatellite
+          ? "Switch to topographic map"
+          : "Switch to satellite imagery"
       }
       active={isSatellite}
       onClick={toggleBaseLayer}

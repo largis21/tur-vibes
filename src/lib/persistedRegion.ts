@@ -13,8 +13,10 @@ function isRegion(value: unknown): value is Region {
 }
 
 export function loadLastRegion(): Region | null {
-  return safeGetJSON<Region | null>(STORAGE_KEYS.lastRegion, null, (v): v is Region | null =>
-    v === null || isRegion(v),
+  return safeGetJSON<Region | null>(
+    STORAGE_KEYS.lastRegion,
+    null,
+    (v): v is Region | null => v === null || isRegion(v),
   );
 }
 

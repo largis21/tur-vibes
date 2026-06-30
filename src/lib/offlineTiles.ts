@@ -578,7 +578,12 @@ export async function deleteTilesExclusiveTo(
     // key format: "sourceId/z/x/y"
     const parts = key.split("/");
     if (parts.length !== 4) continue;
-    const [sourceId, zStr, xStr, yStr] = parts as [string, string, string, string];
+    const [sourceId, zStr, xStr, yStr] = parts as [
+      string,
+      string,
+      string,
+      string,
+    ];
     await deleteTile(sourceId, Number(zStr), Number(xStr), Number(yStr));
     deleted += 1;
   }

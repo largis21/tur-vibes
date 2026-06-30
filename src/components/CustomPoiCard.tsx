@@ -175,7 +175,8 @@ function PoiCard({
                 transition: "color 0.3s",
               }}
             >
-              {copiedCoords ? "✓ " : ""}{poi.lat.toFixed(5)}, {poi.lng.toFixed(5)}
+              {copiedCoords ? "✓ " : ""}
+              {poi.lat.toFixed(5)}, {poi.lng.toFixed(5)}
             </button>
             {poi.elevation != null ? ` · ${poi.elevation.toFixed(0)} m` : ""}
           </div>
