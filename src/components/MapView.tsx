@@ -1,24 +1,24 @@
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+    type ReactNode,
 } from "react";
 import {
-  Layer,
-  Map,
-  Source,
-  type MapRef,
-  type ViewStateChangeEvent,
+    Layer,
+    Map,
+    Source,
+    type MapRef,
+    type ViewStateChangeEvent,
 } from "react-map-gl/maplibre";
 import type { Map as MapLibreMap } from "maplibre-gl";
 
 import { useMap } from "../lib/MapContext";
 import {
-  BLANK_STYLE,
-  regionFromMap,
-  zoomFromLongitudeDelta,
+    BLANK_STYLE,
+    regionFromMap,
+    zoomFromLongitudeDelta,
 } from "../lib/mapHelpers";
 import { getOfflineTileTemplate } from "../lib/offlineTiles";
 import { loadLastRegion, saveLastRegion } from "../lib/persistedRegion";
@@ -35,320 +35,379 @@ import { PointInfoMapLayer } from "./PointInfoMapLayer";
 import { UserLocation } from "./UserLocation";
 
 const DEFAULT_REGION: Region = {
-  latitude: 60.3913,
-  longitude: 5.3221,
-  latitudeDelta: 0.2,
-  longitudeDelta: 0.2,
+    latitude: 60.3913,
+    longitude: 5.3221,
+    latitudeDelta: 0.2,
+    longitudeDelta: 0.2,
 };
 
 const INITIAL_REGION: Region = loadLastRegion() ?? DEFAULT_REGION;
 
 type MapViewProps = {
-  activeToolId: string | null;
-  children?: ReactNode;
+    activeToolId: string | null;
+    children?: ReactNode;
 };
 
 export function MapView({ activeToolId, children }: MapViewProps) {
-  const { mapRef, cursorCoordinate, _publishRegion } = useMap();
-  const { showSteepness, steepnessOpacity, baseLayer, show3DTerrain } = useUiState();
-  const {
-    open: openPointInfo,
-    close: closePointInfo,
-    point: pointInfoPoint,
-  } = usePointInfo();
-  const { selectedPoiId, selectPoi, setManagePanelOpen } = usePoi();
-  const { offlineMode, savedRegions, polygon, downloading } = useOffline();
-  const [mapReady, setMapReady] = useState(false);
+    const { mapRef, cursorCoordinate, _publishRegion } = useMap();
+    const { showSteepness, steepnessOpacity, baseLayer, show3DTerrain } =
+        useUiState();
+    const {
+        open: openPointInfo,
+        close: closePointInfo,
+        point: pointInfoPoint,
+    } = usePointInfo();
+    const { selectedPoiId, selectPoi, setManagePanelOpen } = usePoi();
+    const { offlineMode, savedRegions, polygon, downloading } = useOffline();
+    const [mapReady, setMapReady] = useState(false);
 
-  // Bump on every download finish so the offline raster sources remount.
-  const [tilesVersion, setTilesVersion] = useState(0);
-  const wasDownloading = useRef(downloading);
-  useEffect(() => {
-    if (wasDownloading.current && !downloading) {
-      setTilesVersion((v) => v + 1);
-    }
-    wasDownloading.current = downloading;
-  }, [downloading]);
+    // Bump on every download finish so the offline raster sources remount.
+    const [tilesVersion, setTilesVersion] = useState(0);
+    const wasDownloading = useRef(downloading);
+    useEffect(() => {
+        if (wasDownloading.current && !downloading) {
+            setTilesVersion((v) => v + 1);
+        }
+        wasDownloading.current = downloading;
+    }, [downloading]);
 
-  // Apply / remove 3-D terrain whenever the toggle or map-ready state changes.
-  // (removed — now handled declaratively via the terrain prop below)
+    const handleMove = useCallback(
+        (event: ViewStateChangeEvent) => {
+            const map = event.target;
+            mapRef.current = map;
+            const region = regionFromMap(map);
+            cursorCoordinate.current = {
+                latitude: region.latitude,
+                longitude: region.longitude,
+            };
+            _publishRegion(region);
+        },
+        [mapRef, cursorCoordinate, _publishRegion],
+    );
 
-  const handleMove = useCallback(
-    (event: ViewStateChangeEvent) => {
-      const map = event.target;
-      mapRef.current = map;
-      const region = regionFromMap(map);
-      cursorCoordinate.current = {
-        latitude: region.latitude,
-        longitude: region.longitude,
-      };
-      _publishRegion(region);
-    },
-    [mapRef, cursorCoordinate, _publishRegion],
-  );
+    const handleMoveEnd = useCallback((event: ViewStateChangeEvent) => {
+        const region = regionFromMap(event.target);
+        saveLastRegion(region);
+    }, []);
 
-  const handleMoveEnd = useCallback((event: ViewStateChangeEvent) => {
-    const region = regionFromMap(event.target);
-    saveLastRegion(region);
-  }, []);
+    // Tilt the map when 3D terrain is enabled, level it again when disabled.
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !mapReady) return;
+        map.easeTo({ pitch: show3DTerrain ? 60 : 0, duration: 600 });
+    }, [mapRef, mapReady, show3DTerrain]);
 
-  // Long-press on the map opens the point-info sheet for the touched location.
-  // Short tap closes POI card and Point Info if either is open.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const canvas = map.getCanvasContainer();
+    // Long-press on the map opens the point-info sheet for the touched location.
+    // Short tap closes POI card and Point Info if either is open.
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        const canvas = map.getCanvasContainer();
 
-    const LONG_PRESS_MS = 500;
-    const MOVE_THRESHOLD_PX = 8;
-    let timer: number | null = null;
-    let startX = 0;
-    let startY = 0;
-    let activePointerId: number | null = null;
-    let didMove = false;
+        const LONG_PRESS_MS = 500;
+        const MOVE_THRESHOLD_PX = 8;
+        let timer: number | null = null;
+        let startX = 0;
+        let startY = 0;
+        let activePointerId: number | null = null;
+        let didMove = false;
 
-    function clearTimer() {
-      if (timer != null) {
-        window.clearTimeout(timer);
-        timer = null;
-      }
-    }
+        function clearTimer() {
+            if (timer != null) {
+                window.clearTimeout(timer);
+                timer = null;
+            }
+        }
 
-    function onPointerDown(e: PointerEvent) {
-      // Only consider primary button / first touch.
-      if (e.button !== 0 && e.pointerType === "mouse") return;
-      activePointerId = e.pointerId;
-      startX = e.clientX;
-      startY = e.clientY;
-      didMove = false;
-      clearTimer();
-      timer = window.setTimeout(() => {
-        timer = null;
-        const m = mapRef.current;
-        if (!m) return;
-        const rect = canvas.getBoundingClientRect();
-        const px = startX - rect.left;
-        const py = startY - rect.top;
-        const lngLat = m.unproject([px, py]);
-        selectPoi(null);
-        openPointInfo({
-          latitude: lngLat.lat,
-          longitude: lngLat.lng,
-        });
-      }, LONG_PRESS_MS);
-    }
+        function onPointerDown(e: PointerEvent) {
+            // Only consider primary button / first touch.
+            if (e.button !== 0 && e.pointerType === "mouse") return;
+            activePointerId = e.pointerId;
+            startX = e.clientX;
+            startY = e.clientY;
+            didMove = false;
+            clearTimer();
+            timer = window.setTimeout(() => {
+                timer = null;
+                const m = mapRef.current;
+                if (!m) return;
+                const rect = canvas.getBoundingClientRect();
+                const px = startX - rect.left;
+                const py = startY - rect.top;
+                const lngLat = m.unproject([px, py]);
+                selectPoi(null);
+                openPointInfo({
+                    latitude: lngLat.lat,
+                    longitude: lngLat.lng,
+                });
+            }, LONG_PRESS_MS);
+        }
 
-    function onPointerMove(e: PointerEvent) {
-      if (e.pointerId !== activePointerId) return;
-      if (
-        Math.abs(e.clientX - startX) > MOVE_THRESHOLD_PX ||
-        Math.abs(e.clientY - startY) > MOVE_THRESHOLD_PX
-      ) {
-        didMove = true;
-        clearTimer();
-        activePointerId = null;
-      }
-    }
+        function onPointerMove(e: PointerEvent) {
+            if (e.pointerId !== activePointerId) return;
+            if (
+                Math.abs(e.clientX - startX) > MOVE_THRESHOLD_PX ||
+                Math.abs(e.clientY - startY) > MOVE_THRESHOLD_PX
+            ) {
+                didMove = true;
+                clearTimer();
+                activePointerId = null;
+            }
+        }
 
-    function onPointerEnd(e: PointerEvent) {
-      if (e.pointerId !== activePointerId) return;
-      const wasTap = timer != null && !didMove;
-      clearTimer();
-      activePointerId = null;
-      if (wasTap) {
-        // Short tap on the map — close open panels
-        closePointInfo();
-        selectPoi(null);
-        setManagePanelOpen(false);
-      }
-    }
+        function onPointerEnd(e: PointerEvent) {
+            if (e.pointerId !== activePointerId) return;
+            const wasTap = timer != null && !didMove;
+            clearTimer();
+            activePointerId = null;
+            if (wasTap) {
+                // Short tap on the map — close open panels
+                closePointInfo();
+                selectPoi(null);
+                setManagePanelOpen(false);
+            }
+        }
 
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerup", onPointerEnd);
-    canvas.addEventListener("pointercancel", onPointerEnd);
-    canvas.addEventListener("pointerleave", onPointerEnd);
-    // Cancel long-press if the map starts moving (pan/zoom kicked in).
-    map.on("movestart", clearTimer);
-    map.on("zoomstart", clearTimer);
+        canvas.addEventListener("pointerdown", onPointerDown);
+        canvas.addEventListener("pointermove", onPointerMove);
+        canvas.addEventListener("pointerup", onPointerEnd);
+        canvas.addEventListener("pointercancel", onPointerEnd);
+        canvas.addEventListener("pointerleave", onPointerEnd);
+        // Cancel long-press if the map starts moving (pan/zoom kicked in).
+        map.on("movestart", clearTimer);
+        map.on("zoomstart", clearTimer);
 
-    return () => {
-      clearTimer();
-      canvas.removeEventListener("pointerdown", onPointerDown);
-      canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerup", onPointerEnd);
-      canvas.removeEventListener("pointercancel", onPointerEnd);
-      canvas.removeEventListener("pointerleave", onPointerEnd);
-      map.off("movestart", clearTimer);
-      map.off("zoomstart", clearTimer);
-    };
-  }, [
-    mapRef,
-    mapReady,
-    openPointInfo,
-    closePointInfo,
-    selectPoi,
-    setManagePanelOpen,
-    pointInfoPoint,
-    selectedPoiId,
-  ]);
-
-  const handleMapRef = useCallback(
-    (instance: MapRef | null) => {
-      if (instance) {
-        const map = instance.getMap() as unknown as MapLibreMap;
-        mapRef.current = map;
-        const region = regionFromMap(map);
-        cursorCoordinate.current = {
-          latitude: region.latitude,
-          longitude: region.longitude,
+        return () => {
+            clearTimer();
+            canvas.removeEventListener("pointerdown", onPointerDown);
+            canvas.removeEventListener("pointermove", onPointerMove);
+            canvas.removeEventListener("pointerup", onPointerEnd);
+            canvas.removeEventListener("pointercancel", onPointerEnd);
+            canvas.removeEventListener("pointerleave", onPointerEnd);
+            map.off("movestart", clearTimer);
+            map.off("zoomstart", clearTimer);
         };
-        _publishRegion(region);
-        setMapReady(true);
-      } else {
-        mapRef.current = null;
-        setMapReady(false);
-      }
-    },
-    [mapRef, cursorCoordinate, _publishRegion],
-  );
+    }, [
+        mapRef,
+        mapReady,
+        openPointInfo,
+        closePointInfo,
+        selectPoi,
+        setManagePanelOpen,
+        pointInfoPoint,
+        selectedPoiId,
+    ]);
 
-  return (
-    <Map
-      ref={handleMapRef}
-      initialViewState={{
-        longitude: INITIAL_REGION.longitude,
-        latitude: INITIAL_REGION.latitude,
-        zoom: zoomFromLongitudeDelta(INITIAL_REGION.longitudeDelta),
-      }}
-      mapStyle={BLANK_STYLE}
-      onMove={handleMove}
-      onMoveEnd={handleMoveEnd}
-      attributionControl={false}
-      clickTolerance={1}
-      terrain={show3DTerrain ? { source: "terrain-dem", exaggeration: 1 } : undefined}
-      // maxZoom={15.4}
-      style={{ position: "absolute", inset: 0 }}
-    >
-      {!offlineMode ? (
-        <>
-          {/* Render basemaps for the active group (topo or satellite) */}
-          {basemapsForGroup(baseLayer).map((src) => (
-            <Source
-              key={`${src.id}-online`}
-              id={`${src.id}-online`}
-              type="raster"
-              tiles={[src.online.urlTemplate]}
-              tileSize={src.online.tileSize}
-              {...(src.bounds && {
-                bounds: [
-                  src.bounds.minLon,
-                  src.bounds.minLat,
-                  src.bounds.maxLon,
-                  src.bounds.maxLat,
+    const handleMapRef = useCallback(
+        (instance: MapRef | null) => {
+            if (instance) {
+                const map = instance.getMap() as unknown as MapLibreMap;
+                mapRef.current = map;
+                const region = regionFromMap(map);
+                cursorCoordinate.current = {
+                    latitude: region.latitude,
+                    longitude: region.longitude,
+                };
+                _publishRegion(region);
+                setMapReady(true);
+            } else {
+                mapRef.current = null;
+                setMapReady(false);
+            }
+        },
+        [mapRef, cursorCoordinate, _publishRegion],
+    );
+
+    return (
+        <Map
+            ref={handleMapRef}
+            initialViewState={{
+                longitude: INITIAL_REGION.longitude,
+                latitude: INITIAL_REGION.latitude,
+                zoom: zoomFromLongitudeDelta(INITIAL_REGION.longitudeDelta),
+            }}
+            mapStyle={BLANK_STYLE}
+            onMove={handleMove}
+            onMoveEnd={handleMoveEnd}
+            attributionControl={false}
+            clickTolerance={1}
+            maxPitch={show3DTerrain ? 85 : 0}
+            // @ts-expect-error Wrong type in react-map-gl:
+            terrain={
+                show3DTerrain
+                    ? { source: "terrain-dem", exaggeration: 1 }
+                    : null
+            }
+            sky={{
+                "sky-color": "#87b8e8",
+                "sky-horizon-blend": 0.5,
+                "horizon-color": "#dfe9f2",
+                "horizon-fog-blend": 0.5,
+                "fog-color": "#ffffff",
+                "fog-ground-blend": 0.5,
+                "atmosphere-blend": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    0,
+                    1,
+                    12,
+                    0,
                 ],
-              })}
-              maxzoom={src.maxZoom}
-            >
-              <Layer
-                id={`${src.id}-online-layer`}
-                type="raster"
-                paint={{ "raster-opacity": 1 }}
-              />
-            </Source>
-          ))}
+            }}
+            // maxZoom={15.4}
+            style={{ position: "absolute", inset: 0 }}
+        >
+            {/* z-order anchors (mounted first, never remount): keep
+                base < overlays < markers regardless of base-layer switches
+                or overlay toggles, which otherwise re-add layers on top. */}
+            <Layer
+                id="anchor-base"
+                type="background"
+                layout={{ visibility: "none" }}
+            />
+            <Layer
+                id="anchor-overlay"
+                type="background"
+                layout={{ visibility: "none" }}
+            />
+            <Layer
+                id="anchor-markers"
+                type="background"
+                layout={{ visibility: "none" }}
+            />
 
-          {/* Render overlay sources (steepness) */}
-          {showSteepness &&
-            (() => {
-              const steepnessSrc = getMapSource("steepness");
-              if (!steepnessSrc) return null;
-              return (
-                <Source
-                  id="steepness-online"
-                  type="raster"
-                  tiles={[steepnessSrc.online.urlTemplate]}
-                  tileSize={steepnessSrc.online.tileSize}
-                  maxzoom={steepnessSrc.maxZoom}
-                >
-                  <Layer
-                    id="steepness-online-layer"
-                    type="raster"
-                    paint={{
-                      "raster-opacity": steepnessOpacity,
-                    }}
-                  />
-                </Source>
-              );
-            })()}
-        </>
-      ) : null}
+            {!offlineMode ? (
+                <>
+                    {/* Render basemaps for the active group (topo or satellite) */}
+                    {basemapsForGroup(baseLayer).map((src) => (
+                        <Source
+                            key={`${src.id}-online`}
+                            id={`${src.id}-online`}
+                            type="raster"
+                            tiles={[src.online.urlTemplate]}
+                            tileSize={src.online.tileSize}
+                            {...(src.bounds && {
+                                bounds: [
+                                    src.bounds.minLon,
+                                    src.bounds.minLat,
+                                    src.bounds.maxLon,
+                                    src.bounds.maxLat,
+                                ],
+                            })}
+                            maxzoom={src.maxZoom}
+                        >
+                            <Layer
+                                id={`${src.id}-online-layer`}
+                                type="raster"
+                                beforeId="anchor-overlay"
+                                paint={{ "raster-opacity": 1 }}
+                            />
+                        </Source>
+                    ))}
 
-      {offlineMode ? (
-        <>
-          {/* Render basemaps for the active group in offline mode */}
-          {basemapsForGroup(baseLayer).map((src) => (
+                    {/* Render overlay sources (steepness) */}
+                    {showSteepness &&
+                        (() => {
+                            const steepnessSrc = getMapSource("steepness");
+                            if (!steepnessSrc) return null;
+                            return (
+                                <Source
+                                    id="steepness-online"
+                                    type="raster"
+                                    tiles={[steepnessSrc.online.urlTemplate]}
+                                    tileSize={steepnessSrc.online.tileSize}
+                                    maxzoom={steepnessSrc.maxZoom}
+                                >
+                                    <Layer
+                                        id="steepness-online-layer"
+                                        type="raster"
+                                        beforeId="anchor-markers"
+                                        paint={{
+                                            "raster-opacity": steepnessOpacity,
+                                        }}
+                                    />
+                                </Source>
+                            );
+                        })()}
+                </>
+            ) : null}
+
+            {offlineMode ? (
+                <>
+                    {/* Render basemaps for the active group in offline mode */}
+                    {basemapsForGroup(baseLayer).map((src) => (
+                        <Source
+                            key={`${src.id}-offline-${tilesVersion}`}
+                            id={`${src.id}-offline`}
+                            type="raster"
+                            tiles={[getOfflineTileTemplate(src.id)]}
+                            tileSize={src.online.tileSize}
+                            maxzoom={src.offline.maxZoom}
+                        >
+                            <Layer
+                                id={`${src.id}-offline-layer`}
+                                type="raster"
+                                beforeId="anchor-overlay"
+                                paint={{ "raster-opacity": 1 }}
+                            />
+                        </Source>
+                    ))}
+
+                    {/* Render overlay sources (steepness) in offline mode if enabled */}
+                    {showSteepness
+                        ? (() => {
+                              const steepnessSrc = getMapSource("steepness");
+                              if (!steepnessSrc) return null;
+                              return (
+                                  <Source
+                                      key={`steepness-offline-${tilesVersion}`}
+                                      id="steepness-offline"
+                                      type="raster"
+                                      tiles={[
+                                          getOfflineTileTemplate("steepness"),
+                                      ]}
+                                      tileSize={steepnessSrc.online.tileSize}
+                                      maxzoom={steepnessSrc.offline.maxZoom}
+                                  >
+                                      <Layer
+                                          id="steepness-offline-layer"
+                                          type="raster"
+                                          beforeId="anchor-markers"
+                                          paint={{
+                                              "raster-opacity":
+                                                  steepnessOpacity,
+                                          }}
+                                      />
+                                  </Source>
+                              );
+                          })()
+                        : null}
+                </>
+            ) : null}
+
+            <SavedRegionsOverlay
+                key={`saved-regions-${offlineMode ? "off" : "on"}-${showSteepness ? "s" : "n"}-${tilesVersion}`}
+                regions={savedRegions}
+                selectionPolygon={activeToolId === "offline" ? polygon : null}
+            />
+            {/* DEM source for 3-D terrain — always mounted so tiles are pre-warmed */}
             <Source
-              key={`${src.id}-offline-${tilesVersion}`}
-              id={`${src.id}-offline`}
-              type="raster"
-              tiles={[getOfflineTileTemplate(src.id)]}
-              tileSize={src.online.tileSize}
-              maxzoom={src.offline.maxZoom}
-            >
-              <Layer
-                id={`${src.id}-offline-layer`}
-                type="raster"
-                paint={{ "raster-opacity": 1 }}
-              />
-            </Source>
-          ))}
+                id="terrain-dem"
+                type="raster-dem"
+                tiles={[
+                    "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                ]}
+                tileSize={256}
+                maxzoom={15}
+                encoding="terrarium"
+            />
 
-          {/* Render overlay sources (steepness) in offline mode if enabled */}
-          {showSteepness
-            ? (() => {
-                const steepnessSrc = getMapSource("steepness");
-                if (!steepnessSrc) return null;
-                return (
-                  <Source
-                    key={`steepness-offline-${tilesVersion}`}
-                    id="steepness-offline"
-                    type="raster"
-                    tiles={[getOfflineTileTemplate("steepness")]}
-                    tileSize={steepnessSrc.online.tileSize}
-                    maxzoom={steepnessSrc.offline.maxZoom}
-                  >
-                    <Layer
-                      id="steepness-offline-layer"
-                      type="raster"
-                      paint={{ "raster-opacity": steepnessOpacity }}
-                    />
-                  </Source>
-                );
-              })()
-            : null}
-        </>
-      ) : null}
-
-      <SavedRegionsOverlay
-        key={`saved-regions-${offlineMode ? "off" : "on"}-${showSteepness ? "s" : "n"}-${tilesVersion}`}
-        regions={savedRegions}
-        selectionPolygon={activeToolId === "offline" ? polygon : null}
-      />
-      {/* DEM source for 3-D terrain — always mounted so tiles are pre-warmed */}
-      <Source
-        id="terrain-dem"
-        type="raster-dem"
-        tiles={["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"]}
-        tileSize={256}
-        maxzoom={15}
-        encoding="terrarium"
-      />
-      <UserLocation />
-      <CustomPoiLayer />
-      <PeakLayer />
-      <PointInfoMapLayer />
-      {children}
-    </Map>
-  );
+            <UserLocation />
+            <CustomPoiLayer />
+            <PeakLayer />
+            <PointInfoMapLayer />
+            {children}
+        </Map>
+    );
 }
